@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>테스트 경제 뉴스</title>
+    <link>https://example-news.test/economy</link>
+    <description>RSS 수집기 테스트용 픽스처</description>
+    <item>
+      <title>금융위, PF 사업장 재구조화 방안 발표</title>
+      <link>https://example-news.test/articles/1001?utm_source=rss&amp;utm_medium=feed</link>
+      <description>금융위원회가 부동산 PF 사업장 재구조화 방안을 발표했다.</description>
+      <content:encoded><![CDATA[<p>금융위원회는 3일 부동산 PF 사업장 재구조화 방안을 발표했다. 저축은행 업계에 6개월 유예조치를 적용한다.</p>]]></content:encoded>
+      <dc:creator>홍길동 기자</dc:creator>
+      <pubDate>Mon, 03 Aug 2026 07:00:00 +0900</pubDate>
+    </item>
+    <item>
+      <title>한국은행 기준금리 동결</title>
+      <link>/articles/1002</link>
+      <description>한국은행이 기준금리를 현 수준에서 동결했다.</description>
+      <pubDate>Mon, 03 Aug 2026 06:30:00 +0900</pubDate>
+    </item>
+  </channel>
+</rss>

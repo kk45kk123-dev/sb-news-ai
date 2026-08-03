@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>테스트 피드 (발행일 누락)</title>
+    <link>https://example-news.test/</link>
+    <description>발행일 누락 케이스 테스트</description>
+    <item>
+      <title>발행일이 없는 기사</title>
+      <link>https://example-news.test/articles/2001</link>
+      <description>pubDate 태그가 아예 없는 경우를 테스트한다.</description>
+    </item>
+  </channel>
+</rss>

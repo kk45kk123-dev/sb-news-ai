@@ -25,6 +25,52 @@ const CATEGORIES = [
   "기타",
 ] as const;
 
+/**
+ * Phase 1 MVP 초기 출처 (§6, F-01). 이 샌드박스는 조직 egress 정책상 외부 뉴스/정부
+ * 사이트로 나가는 아웃바운드 연결이 차단되어 있어 실제 RSS 주소를 검증할 수 없었다.
+ * 그래서 url을 추측해서 채우는 대신 명백한 placeholder로 남기고 status='needs_review'로
+ * 시드한다 — F-01 수용 기준("검증 실패한 출처는 status='needs_review'로 표시")대로다.
+ * 실제 URL은 인터넷 접근이 되는 환경에서 확인 후 /admin/sources 또는 이 스크립트에서
+ * 채워 넣어야 한다.
+ */
+const SOURCES: {
+  name: string;
+  url: string;
+  categoryHints: string[];
+  fetchIntervalMin: number;
+}[] = [
+  {
+    name: "금융위원회 보도자료",
+    url: "https://TODO-verify.example/fsc-press-releases-rss",
+    categoryHints: ["정책", "규제/감독"],
+    fetchIntervalMin: 15,
+  },
+  {
+    name: "금융감독원 보도자료",
+    url: "https://TODO-verify.example/fss-press-releases-rss",
+    categoryHints: ["정책", "규제/감독"],
+    fetchIntervalMin: 15,
+  },
+  {
+    name: "한국은행 보도자료",
+    url: "https://TODO-verify.example/bok-press-releases-rss",
+    categoryHints: ["금리", "정책"],
+    fetchIntervalMin: 15,
+  },
+  {
+    name: "연합뉴스 경제",
+    url: "https://TODO-verify.example/yonhap-economy-rss",
+    categoryHints: ["업계동향"],
+    fetchIntervalMin: 30,
+  },
+  {
+    name: '"저축은행" 검색 피드',
+    url: "https://TODO-verify.example/savings-bank-keyword-rss",
+    categoryHints: ["업계동향"],
+    fetchIntervalMin: 30,
+  },
+];
+
 function slugify(name: string): string {
   return name
     .replace(/\//g, "-")
@@ -222,6 +268,24 @@ async function main() {
     });
   }
   console.log(`✔ categories: ${CATEGORIES.length}개`);
+
+  for (const s of SOURCES) {
+    const existing = await prisma.source.findFirst({ where: { orgId: org.id, name: s.name } });
+    if (!existing) {
+      await prisma.source.create({
+        data: {
+          orgId: org.id,
+          name: s.name,
+          type: "rss",
+          url: s.url,
+          categoryHints: s.categoryHints,
+          fetchIntervalMin: s.fetchIntervalMin,
+          status: "needs_review",
+        },
+      });
+    }
+  }
+  console.log(`✔ sources: ${SOURCES.length}개 (전부 status='needs_review' — 실제 URL 검증 필요)`);
 
   const models = [
     {

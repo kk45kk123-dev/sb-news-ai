@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<rss version="2.0">
+  <channel>
+    <title>테스트 EUC-KR 피드</title>
+    <link>https://example-news.test/</link>
+    <description>인코딩 테스트</description>
+    <item>
+      <title>예금자보호한도 상향 논의 재점화</title>
+      <link>https://example-news.test/articles/4001</link>
+      <description>예금자보호한도를 1억원으로 상향하는 논의가 다시 시작됐다.</description>
+      <pubDate>Mon, 03 Aug 2026 05:00:00 +0900</pubDate>
+    </item>
+  </channel>
+</rss>
