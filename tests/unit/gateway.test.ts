@@ -23,9 +23,8 @@ vi.mock("@/server/repositories/ai-call-log.repository", () => ({
 }));
 vi.mock("@/server/ai/providers/anthropic.provider", () => ({ callAnthropic: mockCallAnthropic }));
 
-const { analyzeArticle, NoActiveModelError, SchemaValidationFailedError } = await import(
-  "@/server/ai/gateway"
-);
+const { analyzeArticle, generateBriefing, NoActiveModelError, SchemaValidationFailedError } =
+  await import("@/server/ai/gateway");
 
 const promptVersion = {
   id: "pv-1",
@@ -108,5 +107,47 @@ describe("analyzeArticle", () => {
 
     await expect(analyzeArticle(baseInput)).rejects.toThrow(SchemaValidationFailedError);
     expect(mockCallAnthropic).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("generateBriefing", () => {
+  const candidates = [
+    { id: "article-1", title: "기사1", summaryLines: ["a", "b"], sbImpactScore: 5 },
+    { id: "article-2", title: "기사2", summaryLines: ["c", "d"], sbImpactScore: 3 },
+  ];
+  const validBriefing = {
+    overview: "오늘의 흐름 요약",
+    items: [{ article_id: "article-1", why_now: "지금 중요한 이유", so_what: "대응 방향" }],
+    follow_ups: ["후속 이슈 1"],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockLoadActivePromptVersion.mockResolvedValue({
+      id: "pv-briefing",
+      systemPrompt: "브리핑 작성",
+      userTemplate: "후보: {candidates}",
+    });
+    mockListActiveModelsForTask.mockResolvedValue([model]);
+  });
+
+  it("후보 목록을 프롬프트에 주입하고 검증된 브리핑을 반환한다", async () => {
+    mockCallAnthropic.mockResolvedValue({
+      text: JSON.stringify(validBriefing),
+      tokenInput: 200,
+      tokenOutput: 80,
+    });
+
+    const result = await generateBriefing(candidates);
+
+    expect(result.output.items).toHaveLength(1);
+    expect(mockCallAnthropic).toHaveBeenCalledWith(
+      expect.objectContaining({ userPrompt: expect.stringContaining("article-1") })
+    );
+  });
+
+  it("활성 모델이 없으면 즉시 실패한다", async () => {
+    mockListActiveModelsForTask.mockResolvedValue([]);
+    await expect(generateBriefing(candidates)).rejects.toThrow(NoActiveModelError);
   });
 });

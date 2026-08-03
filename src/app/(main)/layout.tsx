@@ -21,6 +21,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
               <Link href="/" className="hover:text-text">
                 대시보드
               </Link>
+              <Link href="/briefing" className="hover:text-text">
+                브리핑
+              </Link>
               <Link href="/news" className="hover:text-text">
                 뉴스
               </Link>

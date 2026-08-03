@@ -1,15 +1,22 @@
 import { Worker } from "bullmq";
 import { createBullConnection } from "@/server/pipeline/connection";
-import { QUEUE_NAMES, SCHEDULER_TICK_CRON, PURGE_CRON } from "@/server/pipeline/constants";
+import {
+  QUEUE_NAMES,
+  SCHEDULER_TICK_CRON,
+  PURGE_CRON,
+  BRIEFING_GENERATION_CRON,
+} from "@/server/pipeline/constants";
 import { runCollectJob } from "@/server/pipeline/collect.job";
 import { runNormalizeJob } from "@/server/pipeline/normalize.job";
 import { runDedupeJob } from "@/server/pipeline/dedupe.job";
 import { runAnalyzeJob } from "@/server/pipeline/analyze.job";
 import { runPurgeJob } from "@/server/pipeline/purge.job";
 import { runSchedulerTick } from "@/server/pipeline/scheduler-tick.job";
+import { runBriefingJob } from "@/server/pipeline/briefing.job";
 import {
   schedulerQueue,
   purgeQueue,
+  briefingQueue,
   type CollectJobData,
   type NormalizeJobData,
   type DedupeJobData,
@@ -26,10 +33,12 @@ new Worker<DedupeJobData>(QUEUE_NAMES.dedupe, (job) => runDedupeJob(job.data), {
 new Worker<AnalyzeJobData>(QUEUE_NAMES.analyze, (job) => runAnalyzeJob(job.data), { connection });
 new Worker(QUEUE_NAMES.purge, () => runPurgeJob(), { connection });
 new Worker(QUEUE_NAMES.scheduler, () => runSchedulerTick(), { connection });
+new Worker(QUEUE_NAMES.briefing, () => runBriefingJob(), { connection });
 
 async function scheduleRepeatingJobs() {
   await schedulerQueue.add("tick", {}, { repeat: { pattern: SCHEDULER_TICK_CRON } });
   await purgeQueue.add("daily-purge", {}, { repeat: { pattern: PURGE_CRON } });
+  await briefingQueue.add("daily-briefing", {}, { repeat: { pattern: BRIEFING_GENERATION_CRON } });
 }
 
 scheduleRepeatingJobs()

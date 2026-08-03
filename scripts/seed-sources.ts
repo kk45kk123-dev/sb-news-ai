@@ -5,6 +5,7 @@
  */
 import { PrismaClient, type AiTaskType } from "@prisma/client";
 import { analyzeOutputJsonSchema } from "@/server/ai/schemas/analyze.schema";
+import { briefingOutputJsonSchema } from "@/server/ai/schemas/briefing.schema";
 
 const prisma = new PrismaClient();
 
@@ -328,28 +329,7 @@ async function main() {
       description: "오늘의 브리핑 TOP5 생성 (F-03)",
       systemPrompt: BRIEFING_SYSTEM_PROMPT,
       userTemplate: BRIEFING_USER_TEMPLATE,
-      outputSchema: {
-        type: "object",
-        required: ["overview", "items", "follow_ups"],
-        properties: {
-          overview: { type: "string" },
-          items: {
-            type: "array",
-            minItems: 1,
-            maxItems: 5,
-            items: {
-              type: "object",
-              required: ["article_id", "why_now", "so_what"],
-              properties: {
-                article_id: { type: "string" },
-                why_now: { type: "string" },
-                so_what: { type: "string" },
-              },
-            },
-          },
-          follow_ups: { type: "array", items: { type: "string" }, maxItems: 3 },
-        },
-      },
+      outputSchema: briefingOutputJsonSchema,
       variables: { candidates: "후보 20건 (id/제목/요약/영향도, 코드에서 주입)" },
     },
     {

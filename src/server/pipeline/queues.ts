@@ -36,11 +36,10 @@ export const dedupeQueue = new Queue<DedupeJobData>(QUEUE_NAMES.dedupe, {
   connection,
   defaultJobOptions,
 });
-// analyze 큐는 Task #6(AI Gateway)에서 워커(processor)를 등록한다.
-// 지금은 dedupe 단계가 여기로 잡을 넣기만 하고, 아직 소비자가 없다 — 정상적인 중간 상태다.
 export const analyzeQueue = new Queue<AnalyzeJobData>(QUEUE_NAMES.analyze, {
   connection,
   defaultJobOptions,
 });
 export const purgeQueue = new Queue(QUEUE_NAMES.purge, { connection, defaultJobOptions });
 export const schedulerQueue = new Queue(QUEUE_NAMES.scheduler, { connection, defaultJobOptions });
+export const briefingQueue = new Queue(QUEUE_NAMES.briefing, { connection, defaultJobOptions });

@@ -8,6 +8,7 @@ export const QUEUE_NAMES = {
   analyze: "pipeline-analyze",
   purge: "pipeline-purge",
   scheduler: "pipeline-scheduler",
+  briefing: "pipeline-briefing",
 } as const;
 
 export const JOB_RETRY_ATTEMPTS = 3; // §5.2: 지수 백오프 재시도(최대 3회) 후 DLQ
@@ -18,3 +19,7 @@ export const SOURCE_MAX_CONSECUTIVE_FAILURES = 3; // §F-01: 3회 연속 실패 
 export const SCHEDULER_TICK_CRON = "* * * * *"; // 매 1분, 수집 주기가 된 출처를 큐에 넣는다
 export const PURGE_CRON = "0 3 * * *"; // 매일 03:00, raw_content 보존기간 경과분 삭제 (§20-1)
 export const RAW_CONTENT_RETENTION_DAYS = 7; // §8.2
+
+// F-03: "매일 정해진 시각(기본 07:30)에... 생성". 관리자 페이지에서 시각을 바꾸는 기능(§21-6)은
+// Phase 2 이후 admin 설정 테이블과 함께 추가한다 — 지금은 기본값을 코드 상수로 둔다.
+export const BRIEFING_GENERATION_CRON = "30 7 * * *";

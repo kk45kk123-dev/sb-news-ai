@@ -158,3 +158,33 @@ export async function listArticles(
 export async function findArticleWithRelations(id: string): Promise<ArticleWithRelations | null> {
   return prisma.article.findUnique({ where: { id }, include: articleListInclude });
 }
+
+const BRIEFING_CANDIDATE_LIMIT = 20; // F-03: "후보 20건을 AI에 넘겨 최종 5건과 선정 사유를 받는다"
+
+/**
+ * F-03 브리핑 후보. 선정 로직: sb_impact_score 우선 → importance (§F-03). 클러스터 크기·출처
+ * 신뢰도 가중은 Phase 2(F-11 클러스터링)와 함께 들어간다 — 지금은 클러스터 개념이 없다.
+ */
+export async function listBriefingCandidates(
+  orgId: string,
+  dateFrom: Date,
+  dateTo: Date
+): Promise<ArticleWithRelations[]> {
+  const candidates = await prisma.article.findMany({
+    where: {
+      orgId,
+      publishedAt: { gte: dateFrom, lte: dateTo },
+      pipelineStage: "analyzed",
+      analyses: { some: { isCurrent: true } },
+    },
+    include: articleListInclude,
+  });
+
+  return [...candidates]
+    .sort((a, b) => {
+      const scoreDiff = (b.analyses[0]?.sbImpactScore ?? 0) - (a.analyses[0]?.sbImpactScore ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (b.analyses[0]?.importance ?? 0) - (a.analyses[0]?.importance ?? 0);
+    })
+    .slice(0, BRIEFING_CANDIDATE_LIMIT);
+}
