@@ -1,0 +1,18 @@
+# PostgreSQL + pgvector(공식 이미지 포함) + pg_bigm(한국어 2-gram 검색, ADR-002)
+# 커스텀 이미지가 필요한 이유: pg_bigm은 표준 postgres 이미지에 없어 소스 빌드가 필요하다.
+# 이 이미지는 온프레미스 이전 시에도 그대로 사용 가능하다 (§15.4).
+FROM pgvector/pgvector:pg16
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        postgresql-server-dev-16 \
+        git \
+        ca-certificates \
+    && git clone --depth 1 https://github.com/pgbigm/pg_bigm.git /tmp/pg_bigm \
+    && cd /tmp/pg_bigm \
+    && make USE_PGXS=1 \
+    && make USE_PGXS=1 install \
+    && apt-get purge -y build-essential postgresql-server-dev-16 git \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* /tmp/pg_bigm

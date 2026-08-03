@@ -1,0 +1,11 @@
+// 전체 모델은 Task #2(DB 스키마 + 마이그레이션)에서 docs/DB_SCHEMA.md 기준으로 채워진다.
+// 이 파일은 스캐폴딩 단계의 최소 유효 스키마다.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
