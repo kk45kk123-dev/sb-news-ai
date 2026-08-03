@@ -1,11 +1,592 @@
-// 전체 모델은 Task #2(DB 스키마 + 마이그레이션)에서 docs/DB_SCHEMA.md 기준으로 채워진다.
-// 이 파일은 스캐폴딩 단계의 최소 유효 스키마다.
+// docs/DB_SCHEMA.md의 DDL을 Prisma 모델로 옮긴 것이다. Prisma가 표현할 수 없는 것들
+// (partial index, gin_bigm_ops, HNSW vector index, audit_logs REVOKE)은 여기 담을 수 없어
+// migration.sql에 수동으로 추가한다 — 이 파일 하단 주석 및 각 마이그레이션 파일 참조.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgcrypto, vector, pg_bigm]
+}
+
+// ── Enum ──────────────────────────────────────────────────────────────
+
+enum UserRole {
+  admin
+  editor
+  viewer
+
+  @@map("user_role")
+}
+
+enum SourceType {
+  rss
+  api
+  scrape
+
+  @@map("source_type")
+}
+
+enum SourceStatus {
+  ok
+  error
+  needs_review
+
+  @@map("source_status")
+}
+
+enum PipelineStage {
+  collected
+  normalized
+  enriched
+  clustered
+  prefiltered
+  analyzed
+  embedded
+  failed
+
+  @@map("pipeline_stage")
+}
+
+enum RelevanceType {
+  relevant
+  irrelevant
+  unknown
+
+  @@map("relevance_type")
+}
+
+enum ImpactDirection {
+  positive
+  negative
+  neutral
+  mixed
+
+  @@map("impact_direction")
+}
+
+enum ConfidenceLevel {
+  high
+  medium
+  low
+
+  @@map("confidence_level")
+}
+
+enum AssignedByType {
+  ai
+  human
+
+  @@map("assigned_by_type")
+}
+
+enum GeneratedByType {
+  auto
+  manual
+
+  @@map("generated_by_type")
+}
+
+enum ChunkType {
+  analysis
+  content_section
+
+  @@map("chunk_type")
+}
+
+enum FeedbackRating {
+  up
+  down
+
+  @@map("feedback_rating")
+}
+
+enum AiTaskType {
+  analyze
+  briefing
+  qa
+  classify
+  nl_search
+  embed
+
+  @@map("ai_task_type")
+}
+
+enum WatchMatchType {
+  exact
+  fuzzy
+
+  @@map("watch_match_type")
+}
+
+enum NotifyChannel {
+  email
+  in_app
+
+  @@map("notify_channel")
+}
+
+enum FeedbackType {
+  inaccurate
+  irrelevant
+  good
+
+  @@map("feedback_type")
+}
+
+enum FeedbackStatus {
+  open
+  reviewed
+  resolved
+
+  @@map("feedback_status")
+}
+
+enum ChatRole {
+  user
+  assistant
+
+  @@map("chat_role")
+}
+
+// ── 모델 ──────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  users      User[]
+  sources    Source[]
+  articles   Article[]
+  categories Category[]
+  briefings  Briefing[]
+  chatSessions ChatSession[]
+  auditLogs  AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId         String    @map("org_id") @db.Uuid
+  email         String    @db.VarChar(255)
+  name          String    @db.VarChar(100)
+  department    String?   @db.VarChar(100)
+  role          UserRole  @default(viewer)
+  passwordHash  String?   @map("password_hash") @db.VarChar(255)
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization      Organization        @relation(fields: [orgId], references: [id])
+  articleStates      UserArticleState[]
+  promptVersions     PromptVersion[]
+  chatSessions       ChatSession[]
+  keywordWatches     KeywordWatch[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  feedbacksFiled     Feedback[]          @relation("FeedbackUser")
+  feedbacksReviewed  Feedback[]          @relation("FeedbackReviewer")
+  goldenSetEntries   GoldenSet[]
+
+  @@unique([orgId, email])
+  @@map("users")
+}
+
+model Source {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId                String       @map("org_id") @db.Uuid
+  name                 String       @db.VarChar(200)
+  type                 SourceType
+  url                  String
+  config               Json         @default("{}")
+  categoryHints        String[]     @map("category_hints")
+  credibility          Int          @default(3) @db.SmallInt
+  fetchIntervalMin     Int          @default(30) @map("fetch_interval_min")
+  isActive             Boolean      @default(true) @map("is_active")
+  status               SourceStatus @default(needs_review)
+  consecutiveFailures  Int          @default(0) @map("consecutive_failures")
+  lastFetchedAt        DateTime?    @map("last_fetched_at") @db.Timestamptz
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  articles     Article[]
+  crawlLogs    CrawlLog[]
+
+  @@index([isActive, lastFetchedAt], map: "idx_sources_active_due")
+  @@map("sources")
+}
+
+model Article {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId            String        @map("org_id") @db.Uuid
+  sourceId         String        @map("source_id") @db.Uuid
+  url              String
+  urlHash          String        @unique @map("url_hash") @db.VarChar(64)
+  title            String
+  description      String?
+  rawContent       String?       @map("raw_content")
+  contentPurgedAt  DateTime?     @map("content_purged_at") @db.Timestamptz
+  author           String?       @db.VarChar(200)
+  publisher        String?       @db.VarChar(200)
+  publishedAt      DateTime      @map("published_at") @db.Timestamptz
+  imageUrl         String?       @map("image_url")
+  isPaywalled      Boolean       @default(false) @map("is_paywalled")
+  language         String        @default("ko") @db.VarChar(10)
+  clusterId        String?       @map("cluster_id") @db.Uuid
+  isClusterLead    Boolean       @default(true) @map("is_cluster_lead")
+  pipelineStage    PipelineStage @default(collected) @map("pipeline_stage")
+  relevance        RelevanceType @default(unknown)
+  collectedAt      DateTime      @default(now()) @map("collected_at") @db.Timestamptz
+
+  organization      Organization       @relation(fields: [orgId], references: [id])
+  source             Source             @relation(fields: [sourceId], references: [id])
+  analyses           Analysis[]
+  categories         ArticleCategory[]
+  embeddings         ArticleEmbedding[]
+  userStates         UserArticleState[]
+  aiCallLogs         AiCallLog[]
+  goldenSetEntries   GoldenSet[]
+
+  @@index([publishedAt(sort: Desc)], map: "idx_articles_published_at")
+  @@index([clusterId], map: "idx_articles_cluster")
+  @@index([pipelineStage], map: "idx_articles_pipeline_stage")
+  @@index([publishedAt], map: "idx_articles_purge_due")
+  @@map("articles")
+}
+
+model Analysis {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId           String            @map("article_id") @db.Uuid
+  summaryLines        String[]          @map("summary_lines")
+  keywords            String[]
+  importance          Int               @db.SmallInt
+  sbImpactScore       Int               @map("sb_impact_score") @db.SmallInt
+  sbImpactDirection   ImpactDirection   @map("sb_impact_direction")
+  sbImpactReason      String            @map("sb_impact_reason")
+  customerImpact      String?           @map("customer_impact")
+  digitalImpact       String?           @map("digital_impact")
+  risks               String[]          @default([])
+  actionIdeas         String[]          @default([]) @map("action_ideas")
+  aiComment           String?           @map("ai_comment")
+  evidence            Json              @default("[]")
+  confidence          ConfidenceLevel
+  promptVersionId     String            @map("prompt_version_id") @db.Uuid
+  modelId             String            @map("model_id") @db.Uuid
+  tokenInput          Int?              @map("token_input")
+  tokenOutput         Int?              @map("token_output")
+  latencyMs           Int?              @map("latency_ms")
+  isCurrent           Boolean           @default(true) @map("is_current")
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  article       Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id])
+  model         AiModel       @relation(fields: [modelId], references: [id])
+  feedbacks     Feedback[]
+
+  @@index([sbImpactScore(sort: Desc)], map: "idx_analyses_impact")
+  @@map("analyses")
+}
+
+model Category {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId      String   @map("org_id") @db.Uuid
+  name       String   @db.VarChar(50)
+  slug       String   @db.VarChar(50)
+  isActive   Boolean  @default(true) @map("is_active")
+  sortOrder  Int      @default(0) @map("sort_order")
+
+  organization Organization      @relation(fields: [orgId], references: [id])
+  articles     ArticleCategory[]
+
+  @@unique([orgId, slug])
+  @@map("categories")
+}
+
+model ArticleCategory {
+  articleId   String         @map("article_id") @db.Uuid
+  categoryId  String         @map("category_id") @db.Uuid
+  rank        Int            @db.SmallInt
+  assignedBy  AssignedByType @default(ai) @map("assigned_by")
+
+  article  Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@id([articleId, categoryId])
+  @@index([categoryId, rank], map: "idx_article_categories_category")
+  @@map("article_categories")
+}
+
+model Briefing {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId             String          @map("org_id") @db.Uuid
+  briefingDate      DateTime        @map("briefing_date") @db.Date
+  overview          String
+  items             Json
+  followUps         String[]        @default([]) @map("follow_ups")
+  modelId           String?         @map("model_id") @db.Uuid
+  promptVersionId   String?         @map("prompt_version_id") @db.Uuid
+  generatedAt       DateTime        @default(now()) @map("generated_at") @db.Timestamptz
+  generatedBy       GeneratedByType @default(auto) @map("generated_by")
+
+  organization  Organization   @relation(fields: [orgId], references: [id])
+  model         AiModel?       @relation(fields: [modelId], references: [id])
+  promptVersion PromptVersion? @relation(fields: [promptVersionId], references: [id])
+
+  @@unique([orgId, briefingDate])
+  @@map("briefings")
+}
+
+model ArticleEmbedding {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId  String    @map("article_id") @db.Uuid
+  chunkType  ChunkType @map("chunk_type")
+  sourceType String    @default("news") @map("source_type") @db.VarChar(30)
+  chunkText  String    @map("chunk_text")
+  embedding  Unsupported("vector(1536)")
+  model      String    @db.VarChar(100)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId], map: "idx_article_embeddings_article")
+  @@map("article_embeddings")
+}
+
+model UserArticleState {
+  userId        String    @map("user_id") @db.Uuid
+  articleId     String    @map("article_id") @db.Uuid
+  isRead        Boolean   @default(false) @map("is_read")
+  readAt        DateTime? @map("read_at") @db.Timestamptz
+  isBookmarked  Boolean   @default(false) @map("is_bookmarked")
+  bookmarkedAt  DateTime? @map("bookmarked_at") @db.Timestamptz
+  memo          String?
+  folder        String?   @db.VarChar(100)
+  rating        FeedbackRating?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, articleId])
+  @@index([userId, bookmarkedAt(sort: Desc)], map: "idx_uas_bookmarked")
+  @@index([userId], map: "idx_uas_unread")
+  @@map("user_article_states")
+}
+
+model Prompt {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskType    AiTaskType @map("task_type")
+  name        String     @db.VarChar(100)
+  description String?
+
+  versions PromptVersion[]
+
+  @@unique([taskType, name])
+  @@map("prompts")
+}
+
+model PromptVersion {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  promptId      String   @map("prompt_id") @db.Uuid
+  version       Int
+  systemPrompt  String   @map("system_prompt")
+  userTemplate  String   @map("user_template")
+  variables     Json     @default("{}")
+  outputSchema  Json     @map("output_schema")
+  isActive      Boolean  @default(false) @map("is_active")
+  createdBy     String?  @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  notes         String?
+
+  prompt    Prompt      @relation(fields: [promptId], references: [id])
+  creator   User?       @relation(fields: [createdBy], references: [id])
+  analyses  Analysis[]
+  briefings Briefing[]
+  aiCallLogs AiCallLog[]
+
+  @@unique([promptId, version])
+  @@map("prompt_versions")
+}
+
+model AiModel {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider          String       @db.VarChar(50)
+  modelKey          String       @map("model_key") @db.VarChar(100)
+  displayName       String       @map("display_name") @db.VarChar(100)
+  taskTypes         AiTaskType[] @map("task_types")
+  params            Json         @default("{}")
+  costPer1kInput    Decimal      @default(0) @map("cost_per_1k_input") @db.Decimal(10, 6)
+  costPer1kOutput   Decimal      @default(0) @map("cost_per_1k_output") @db.Decimal(10, 6)
+  priority          Int          @default(1)
+  isActive          Boolean      @default(true) @map("is_active")
+
+  analyses  Analysis[]
+  briefings Briefing[]
+  aiCallLogs AiCallLog[]
+
+  @@map("ai_models")
+}
+
+model ChatSession {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String?  @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  messages     ChatMessage[]
+
+  @@index([userId, updatedAt(sort: Desc)], map: "idx_chat_sessions_user")
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId              String   @map("session_id") @db.Uuid
+  role                   ChatRole
+  content                String
+  referencedArticleIds   String[] @map("referenced_article_ids") @db.Uuid
+  retrievalQuery         Json?    @map("retrieval_query")
+  tokenInput             Int?     @map("token_input")
+  tokenOutput            Int?     @map("token_output")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  session             ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt], map: "idx_chat_messages_session")
+  @@map("chat_messages")
+}
+
+model KeywordWatch {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String         @map("user_id") @db.Uuid
+  keyword    String         @db.VarChar(100)
+  matchType  WatchMatchType @default(fuzzy) @map("match_type")
+  minImpact  Int?           @map("min_impact") @db.SmallInt
+  channel    NotifyChannel  @default(in_app)
+  isActive   Boolean        @default(true) @map("is_active")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([isActive], map: "idx_keyword_watches_active")
+  @@map("keyword_watches")
+}
+
+model Notification {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String   @db.VarChar(50)
+  title     String   @db.VarChar(200)
+  body      String?
+  link      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_notifications_user_unread")
+  @@map("notifications")
+}
+
+model CrawlLog {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId      String    @map("source_id") @db.Uuid
+  startedAt     DateTime  @map("started_at") @db.Timestamptz
+  finishedAt    DateTime? @map("finished_at") @db.Timestamptz
+  status        String    @db.VarChar(20)
+  itemsFound    Int       @default(0) @map("items_found")
+  itemsNew      Int       @default(0) @map("items_new")
+  errorMessage  String?   @map("error_message")
+
+  source Source @relation(fields: [sourceId], references: [id])
+
+  @@index([sourceId, startedAt(sort: Desc)], map: "idx_crawl_logs_source_time")
+  @@map("crawl_logs")
+}
+
+model AiCallLog {
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskType          AiTaskType @map("task_type")
+  modelId           String?    @map("model_id") @db.Uuid
+  promptVersionId   String?    @map("prompt_version_id") @db.Uuid
+  articleId         String?    @map("article_id") @db.Uuid
+  tokenInput        Int?       @map("token_input")
+  tokenOutput       Int?       @map("token_output")
+  cost              Decimal?   @db.Decimal(10, 6)
+  latencyMs         Int?       @map("latency_ms")
+  status            String     @db.VarChar(20)
+  error             String?
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  model         AiModel?       @relation(fields: [modelId], references: [id])
+  promptVersion PromptVersion? @relation(fields: [promptVersionId], references: [id])
+  article       Article?       @relation(fields: [articleId], references: [id])
+
+  @@index([createdAt(sort: Desc)], map: "idx_ai_call_logs_created")
+  @@index([taskType, createdAt(sort: Desc)], map: "idx_ai_call_logs_task")
+  @@map("ai_call_logs")
+}
+
+// append-only: 마이그레이션에서 REVOKE UPDATE, DELETE ON audit_logs FROM app_user; 실행 (§16.5, §20-4)
+model AuditLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid
+  action      String   @db.VarChar(100)
+  targetType  String?  @map("target_type") @db.VarChar(50)
+  targetId    String?  @map("target_id") @db.Uuid
+  before      Json?
+  after       Json?
+  ipAddress   String?  @map("ip_address") @db.Inet
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_audit_logs_user_time")
+  @@index([targetType, targetId], map: "idx_audit_logs_target")
+  @@map("audit_logs")
+}
+
+model Feedback {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String         @map("user_id") @db.Uuid
+  analysisId  String         @map("analysis_id") @db.Uuid
+  type        FeedbackType
+  comment     String?
+  status      FeedbackStatus @default(open)
+  reviewedBy  String?        @map("reviewed_by") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  user      User      @relation("FeedbackUser", fields: [userId], references: [id])
+  reviewer  User?     @relation("FeedbackReviewer", fields: [reviewedBy], references: [id])
+  analysis  Analysis  @relation(fields: [analysisId], references: [id])
+
+  @@index([status, createdAt], map: "idx_feedbacks_status")
+  @@map("feedbacks")
+}
+
+model GoldenSet {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId       String   @map("article_id") @db.Uuid
+  expectedOutput  Json     @map("expected_output")
+  notes           String?
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  article Article @relation(fields: [articleId], references: [id])
+  creator User?   @relation(fields: [createdBy], references: [id])
+
+  @@map("golden_set")
 }
