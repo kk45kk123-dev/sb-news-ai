@@ -1,0 +1,13 @@
+// API 에러 코드. 프론트엔드는 이 코드로 분기하고, 메시지 문자열은 파싱하지 않는다 (§9.1).
+export const ErrorCode = {
+  VALIDATION_ERROR: "VALIDATION_ERROR",
+  INVALID_CREDENTIALS: "INVALID_CREDENTIALS",
+  UNAUTHORIZED: "UNAUTHORIZED",
+  FORBIDDEN: "FORBIDDEN",
+  CSRF_MISMATCH: "CSRF_MISMATCH",
+  RATE_LIMITED: "RATE_LIMITED",
+  NOT_FOUND: "NOT_FOUND",
+  INTERNAL_ERROR: "INTERNAL_ERROR",
+} as const;
+
+export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

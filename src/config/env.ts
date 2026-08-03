@@ -6,16 +6,22 @@ import { z } from "zod";
  * selection) live in the DB and are managed from /admin — never here.
  * See PROJECT_SPEC.md §21 "개발 원칙".
  */
+const optionalString = z.preprocess(
+  (v) => (v === "" ? undefined : v),
+  z.string().min(1).optional()
+);
+const optionalUrl = z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 characters"),
   APP_BASE_URL: z.string().url(),
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
-  OPENAI_API_KEY: z.string().min(1).optional(),
-  HTTP_PROXY: z.string().url().optional(),
-  HTTPS_PROXY: z.string().url().optional(),
+  ANTHROPIC_API_KEY: optionalString,
+  OPENAI_API_KEY: optionalString,
+  HTTP_PROXY: optionalUrl,
+  HTTPS_PROXY: optionalUrl,
 });
 
 export type Env = z.infer<typeof envSchema>;
