@@ -12,12 +12,10 @@ export interface AuthContext {
   csrfToken: string;
 }
 
-/**
- * 세션 쿠키를 검증하고 활성 사용자를 반환한다. 세션이 없거나, 만료됐거나,
- * 계정이 비활성화(is_active=false)됐으면 null을 반환한다 — 라우트가 401로 응답해야 한다.
- */
-export async function getAuthContext(req: NextRequest): Promise<AuthContext | null> {
-  const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+type CookieReader = { get(name: string): { value: string } | undefined };
+
+async function resolveAuthContext(cookies: CookieReader): Promise<AuthContext | null> {
+  const token = cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
 
   const session = await getSession(token);
@@ -27,6 +25,19 @@ export async function getAuthContext(req: NextRequest): Promise<AuthContext | nu
   if (!user || !user.isActive) return null;
 
   return { user, sessionToken: token, csrfToken: session.csrfToken };
+}
+
+/**
+ * 세션 쿠키를 검증하고 활성 사용자를 반환한다 (Route Handler용). 세션이 없거나, 만료됐거나,
+ * 계정이 비활성화(is_active=false)됐으면 null을 반환한다 — 라우트가 401로 응답해야 한다.
+ */
+export async function getAuthContext(req: NextRequest): Promise<AuthContext | null> {
+  return resolveAuthContext(req.cookies);
+}
+
+/** 서버 컴포넌트(페이지)용 — next/headers의 cookies()를 그대로 넘긴다. */
+export async function getAuthContextForPage(cookies: CookieReader): Promise<AuthContext | null> {
+  return resolveAuthContext(cookies);
 }
 
 /**
