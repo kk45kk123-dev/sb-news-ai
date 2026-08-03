@@ -4,6 +4,7 @@
  * (§F-01: "검증 실패한 출처는 status='needs_review'로 표시").
  */
 import { PrismaClient, type AiTaskType } from "@prisma/client";
+import { analyzeOutputJsonSchema } from "@/server/ai/schemas/analyze.schema";
 
 const prisma = new PrismaClient();
 
@@ -78,35 +79,8 @@ function slugify(name: string): string {
     .toLowerCase();
 }
 
-const ANALYZE_OUTPUT_SCHEMA = {
-  type: "object",
-  required: [
-    "summary_lines",
-    "keywords",
-    "importance",
-    "sb_impact_score",
-    "sb_impact_direction",
-    "sb_impact_reason",
-    "categories",
-    "confidence",
-  ],
-  properties: {
-    summary_lines: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 3 },
-    keywords: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 6 },
-    importance: { type: "integer", minimum: 1, maximum: 5 },
-    sb_impact_score: { type: "integer", minimum: 1, maximum: 5 },
-    sb_impact_direction: { enum: ["positive", "negative", "neutral", "mixed"] },
-    sb_impact_reason: { type: "string" },
-    customer_impact: { type: "string" },
-    digital_impact: { type: "string" },
-    risks: { type: "array", items: { type: "string" }, maxItems: 3 },
-    action_ideas: { type: "array", items: { type: "string" }, maxItems: 3 },
-    ai_comment: { type: "string" },
-    categories: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 3 },
-    evidence: { type: "array", items: { type: "string" }, maxItems: 2 },
-    confidence: { enum: ["high", "medium", "low"] },
-  },
-};
+// zod 검증기(src/server/ai/gateway.ts가 실제로 쓰는 것)와 벌어지지 않도록 단일 정의를 가져다 쓴다.
+const ANALYZE_OUTPUT_SCHEMA = analyzeOutputJsonSchema;
 
 const ANALYZE_SYSTEM_PROMPT = `당신은 한국 저축은행 업계를 15년간 분석해온 금융 애널리스트입니다.
 저축은행중앙회 실무자(정책기획·리스크관리·디지털전략·경영기획)를 위해
