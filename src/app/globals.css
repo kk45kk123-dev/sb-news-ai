@@ -2,7 +2,127 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  color: #0b1f3a;
-  background: #ffffff;
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 208 79% 28%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 221 83% 53%;
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 38 92% 50%;
+    --accent-foreground: 26 40% 16%;
+
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 16% 42%;
+
+    --border: 220 14% 89%;
+    --input: 220 14% 89%;
+    --ring: 208 79% 28%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 32%;
+    --success-foreground: 0 0% 100%;
+
+    --radius: 1rem;
+
+    --cat-1: 208 79% 32%;
+    --cat-2: 162 63% 32%;
+    --cat-3: 244 40% 52%;
+    --cat-4: 25 75% 42%;
+    --cat-5: 262 60% 55%;
+    --cat-6: 191 65% 34%;
+    --cat-7: 142 60% 32%;
+    --cat-8: 350 65% 45%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 20% 96%;
+
+    --card: 222 40% 9%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 222 40% 9%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 208 72% 58%;
+    --primary-foreground: 222 47% 8%;
+
+    --secondary: 221 83% 66%;
+    --secondary-foreground: 222 47% 8%;
+
+    --accent: 38 92% 58%;
+    --accent-foreground: 26 40% 12%;
+
+    --muted: 222 28% 15%;
+    --muted-foreground: 215 16% 65%;
+
+    --border: 222 24% 19%;
+    --input: 222 24% 19%;
+    --ring: 208 72% 58%;
+
+    --destructive: 0 70% 62%;
+    --destructive-foreground: 222 47% 8%;
+
+    --success: 142 60% 48%;
+    --success-foreground: 222 47% 8%;
+
+    --cat-1: 208 75% 62%;
+    --cat-2: 162 55% 52%;
+    --cat-3: 244 55% 72%;
+    --cat-4: 25 80% 62%;
+    --cat-5: 262 65% 72%;
+    --cat-6: 191 65% 55%;
+    --cat-7: 142 50% 52%;
+    --cat-8: 350 70% 65%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 dark:bg-card/60 backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

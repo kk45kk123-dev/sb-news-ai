@@ -1,0 +1,11 @@
+{
+  "name": "SB NEWS AI",
+  "short_name": "SB NEWS AI",
+  "description": "저축은행 산업 종사자를 위한 AI 기반 경제뉴스 큐레이션·해석 플랫폼",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0F4C81",
+  "lang": "ko",
+  "icons": []
+}
