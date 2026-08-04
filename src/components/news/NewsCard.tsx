@@ -4,6 +4,7 @@ import { ImpactMeter } from "@/components/ui/ImpactMeter";
 import { CategoryChip } from "@/components/ui/CategoryChip";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { SummaryLines } from "./SummaryLines";
+import { BookmarkButton } from "./BookmarkButton";
 import { formatRelativeTime } from "@/lib/date";
 
 export function NewsCard({ article }: { article: ArticleDto }) {
@@ -27,6 +28,9 @@ export function NewsCard({ article }: { article: ArticleDto }) {
         {article.analysis && article.analysis.confidence === "low" && (
           <ConfidenceBadge level={article.analysis.confidence} />
         )}
+        <span className="ml-auto">
+          <BookmarkButton articleId={article.id} initialBookmarked={article.isBookmarked} />
+        </span>
       </div>
 
       <h3 className="mb-2 text-base font-semibold text-text">

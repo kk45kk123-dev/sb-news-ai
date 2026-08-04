@@ -4,6 +4,10 @@ import {
   findArticleWithRelations,
   type ArticleWithRelations,
 } from "@/server/repositories/article.repository";
+import {
+  getStatesForArticles,
+  getState,
+} from "@/server/repositories/user-article-state.repository";
 
 const DEFAULT_LIST_WINDOW_DAYS = 30; // §17.1: 목록 쿼리는 항상 날짜 범위로 제한
 const DEFAULT_LIMIT = 20;
@@ -36,6 +40,7 @@ export interface ArticleDto {
   isPaywalled: boolean;
   isRead: boolean;
   isBookmarked: boolean;
+  memo: string | null;
   source: { id: string; name: string };
   categories: { name: string; slug: string; rank: number }[];
   analysis: {
@@ -57,7 +62,7 @@ export interface ArticleDto {
 
 export function toArticleDto(
   article: ArticleWithRelations,
-  userState?: { isRead: boolean; isBookmarked: boolean }
+  userState?: { isRead: boolean; isBookmarked: boolean; memo: string | null }
 ): ArticleDto {
   const analysis = article.analyses[0];
   return {
@@ -71,6 +76,7 @@ export function toArticleDto(
     isPaywalled: article.isPaywalled,
     isRead: userState?.isRead ?? false,
     isBookmarked: userState?.isBookmarked ?? false,
+    memo: userState?.memo ?? null,
     source: { id: article.source.id, name: article.source.name },
     categories: article.categories.map((c) => ({
       name: c.category.name,
@@ -123,16 +129,19 @@ export async function listArticlesForOrg(
     userId,
   });
 
+  const states = userId ? await getStatesForArticles(userId, items.map((a) => a.id)) : new Map();
+
   const nextOffset = query.cursor + items.length;
   return {
-    items: items.map((a) => toArticleDto(a)),
+    items: items.map((a) => toArticleDto(a, states.get(a.id))),
     total,
     nextCursor: nextOffset < total ? nextOffset : null,
   };
 }
 
-export async function getArticleDetail(id: string): Promise<ArticleDto | null> {
+export async function getArticleDetail(id: string, userId?: string): Promise<ArticleDto | null> {
   const article = await findArticleWithRelations(id);
   if (!article) return null;
-  return toArticleDto(article);
+  const state = userId ? await getState(userId, id) : null;
+  return toArticleDto(article, state ?? undefined);
 }

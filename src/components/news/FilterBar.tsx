@@ -68,6 +68,24 @@ export function FilterBar({ categories }: { categories: { name: string; slug: st
         ))}
       </select>
 
+      <label className="flex items-center gap-1.5 text-sm text-text-muted">
+        <input
+          type="checkbox"
+          checked={searchParams.get("unread_only") === "true"}
+          onChange={(e) => setParam("unread_only", e.target.checked ? "true" : "")}
+        />
+        읽지 않음
+      </label>
+
+      <label className="flex items-center gap-1.5 text-sm text-text-muted">
+        <input
+          type="checkbox"
+          checked={searchParams.get("bookmarked_only") === "true"}
+          onChange={(e) => setParam("bookmarked_only", e.target.checked ? "true" : "")}
+        />
+        저장한 뉴스
+      </label>
+
       <button
         type="button"
         onClick={reset}

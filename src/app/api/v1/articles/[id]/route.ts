@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const { id } = await params;
-  const article = await getArticleDetail(id);
+  const article = await getArticleDetail(id, ctx.user.id);
   if (!article) {
     return apiError(ErrorCode.NOT_FOUND, "기사를 찾을 수 없습니다.", 404);
   }

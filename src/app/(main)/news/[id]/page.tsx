@@ -3,7 +3,10 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { getAuthContextForPage } from "@/server/auth/guard";
 import { getArticleDetail } from "@/server/services/article.service";
+import { markAsRead } from "@/server/repositories/user-article-state.repository";
 import { AnalysisPanel } from "@/components/news/AnalysisPanel";
+import { BookmarkButton } from "@/components/news/BookmarkButton";
+import { MemoEditor } from "@/components/news/MemoEditor";
 import { CategoryChip } from "@/components/ui/CategoryChip";
 import { formatRelativeTime } from "@/lib/date";
 
@@ -12,8 +15,11 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
   if (!ctx) redirect("/login");
 
   const { id } = await params;
-  const article = await getArticleDetail(id);
+  const article = await getArticleDetail(id, ctx.user.id);
   if (!article) notFound();
+
+  // F-06: "읽음: 상세 진입 시 자동 기록"
+  await markAsRead(ctx.user.id, id);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
@@ -37,6 +43,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
           >
             원문 보기 ↗
           </a>
+          <BookmarkButton articleId={article.id} initialBookmarked={article.isBookmarked} />
           <Link href="/news" className="rounded-md px-3 py-1.5 text-sm text-text-muted hover:bg-bg-subtle">
             목록으로
           </Link>
@@ -69,6 +76,10 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
         {article.description && (
           <p className="mt-4 text-sm text-text-muted">{article.description}</p>
         )}
+
+        <div className="mt-6 rounded-lg border border-border bg-bg p-3">
+          <MemoEditor articleId={article.id} initialMemo={article.memo} />
+        </div>
       </div>
 
       <aside>

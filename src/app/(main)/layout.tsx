@@ -27,6 +27,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
               <Link href="/news" className="hover:text-text">
                 뉴스
               </Link>
+              <Link href="/saved" className="hover:text-text">
+                저장
+              </Link>
             </nav>
           </div>
           <span className="text-sm text-text-muted">{ctx.user.name}님</span>
