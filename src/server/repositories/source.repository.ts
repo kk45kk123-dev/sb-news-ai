@@ -1,8 +1,46 @@
 import { prisma } from "@/server/db/client";
-import type { Source, SourceStatus } from "@prisma/client";
+import type { Source, SourceStatus, SourceType } from "@prisma/client";
 
 export async function listActiveSources(): Promise<Source[]> {
   return prisma.source.findMany({ where: { isActive: true } });
+}
+
+/** 관리자 콘솔용 — 비활성 출처도 포함해 전체를 보여준다 (F-10). */
+export async function listAllSources(orgId: string): Promise<Source[]> {
+  return prisma.source.findMany({ where: { orgId }, orderBy: { name: "asc" } });
+}
+
+export interface CreateSourceInput {
+  orgId: string;
+  name: string;
+  type: SourceType;
+  url: string;
+  categoryHints: string[];
+  credibility: number;
+  fetchIntervalMin: number;
+}
+
+export async function createSource(input: CreateSourceInput): Promise<Source> {
+  return prisma.source.create({
+    data: { ...input, status: "needs_review" },
+  });
+}
+
+export interface UpdateSourceInput {
+  name?: string;
+  url?: string;
+  categoryHints?: string[];
+  credibility?: number;
+  fetchIntervalMin?: number;
+  isActive?: boolean;
+}
+
+export async function updateSource(id: string, input: UpdateSourceInput): Promise<Source> {
+  return prisma.source.update({ where: { id }, data: input });
+}
+
+export async function deleteSource(id: string): Promise<void> {
+  await prisma.source.delete({ where: { id } });
 }
 
 export async function findSourceById(id: string): Promise<Source | null> {

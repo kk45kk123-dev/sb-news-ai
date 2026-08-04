@@ -1,13 +1,16 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getAuthContextForPage } from "@/server/auth/guard";
+import { getAuthContextForPage, hasRole } from "@/server/auth/guard";
+import { LogoutButton } from "@/components/layout/LogoutButton";
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getAuthContextForPage(await cookies());
   if (!ctx) {
     redirect("/login");
   }
+
+  const isAdmin = hasRole(ctx.user.role, ["admin"]);
 
   return (
     <div className="min-h-screen bg-bg-subtle">
@@ -30,9 +33,17 @@ export default async function MainLayout({ children }: { children: React.ReactNo
               <Link href="/saved" className="hover:text-text">
                 저장
               </Link>
+              {isAdmin && (
+                <Link href="/admin/sources" className="hover:text-text">
+                  관리자
+                </Link>
+              )}
             </nav>
           </div>
-          <span className="text-sm text-text-muted">{ctx.user.name}님</span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-text-muted">{ctx.user.name}님</span>
+            <LogoutButton />
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-layout px-6 py-8">{children}</main>
