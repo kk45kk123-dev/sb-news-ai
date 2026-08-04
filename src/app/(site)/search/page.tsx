@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Search as SearchIcon } from "lucide-react";
 import { CATEGORIES } from "@/data/categories";
 import { MEDIA_OUTLETS } from "@/data/media";
@@ -19,7 +19,14 @@ const DATE_PRESETS = [
 ] as const;
 
 export default function SearchPage() {
-  const router = useRouter();
+  return (
+    <React.Suspense fallback={null}>
+      <SearchPageContent />
+    </React.Suspense>
+  );
+}
+
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
 

@@ -17,6 +17,14 @@ const SORT_TABS: { value: NewsListParams["sort"]; label: string }[] = [
 ];
 
 export default function NewsListPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <NewsListPageContent />
+    </React.Suspense>
+  );
+}
+
+function NewsListPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const categoryId = searchParams.get("category") ?? undefined;
