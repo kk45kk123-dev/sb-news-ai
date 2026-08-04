@@ -1,4 +1,7 @@
-import { JSDOM } from "jsdom";
+// linkedom instead of jsdom: pure JS with no native/optional deps (jsdom's
+// dynamic internal requires — canvas, ws, etc. — routinely fail to resolve
+// in Vercel's serverless function bundle even though local builds are fine).
+import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 
 export class ArticleExtractionError extends Error {}
@@ -58,8 +61,8 @@ export async function extractArticleFromUrl(url: string): Promise<ExtractedArtic
     throw new ArticleExtractionError("페이지 용량이 너무 큽니다.");
   }
 
-  const dom = new JSDOM(html, { url });
-  const parsed = new Readability(dom.window.document).parse();
+  const { document } = parseHTML(html, url);
+  const parsed = new Readability(document as unknown as Document).parse();
 
   if (!parsed || !parsed.textContent || parsed.textContent.trim().length < 30) {
     throw new ArticleExtractionError("본문을 추출하지 못했습니다. 원문을 직접 붙여넣어 주세요.");
