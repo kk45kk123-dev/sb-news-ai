@@ -60,27 +60,43 @@ export default function AdminNewsIngestPage() {
     updateStep("extract", "running");
 
     try {
-      const res = await fetch("/api/admin/ingest/analyze", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode, url: mode === "url" ? url : undefined, text: mode === "text" ? text : undefined }),
-      });
-      const body = await res.json();
-
-      if (!res.ok) {
-        updateStep("extract", "error", body.error ?? "분석에 실패했습니다.");
-        toast.error(body.error ?? "분석에 실패했습니다.");
-        setPhase("input");
-        return;
+      let res: Response;
+      try {
+        res = await fetch("/api/admin/ingest/analyze", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ mode, url: mode === "url" ? url : undefined, text: mode === "text" ? text : undefined }),
+        });
+      } catch {
+        throw new Error("서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.");
       }
 
-      updateStep("extract", "done", `본문 ${body.body.length}자 추출 및 AI 분석 완료.`);
+      let body: { error?: string; analysis?: unknown; body?: string; sourceUrl?: string | null };
+      try {
+        body = await res.json();
+      } catch {
+        // A timed-out or crashed serverless function returns an HTML/plain-text
+        // error page, not JSON — surface the HTTP status so it's diagnosable
+        // instead of collapsing into a generic "network error".
+        throw new Error(
+          res.status === 504
+            ? "AI 분석이 시간 초과되었습니다 (504). 본문이 너무 길거나 응답이 지연되었습니다."
+            : `서버 응답을 처리하지 못했습니다 (HTTP ${res.status}).`
+        );
+      }
+
+      if (!res.ok) {
+        throw new Error(body.error ?? `분석에 실패했습니다 (HTTP ${res.status}).`);
+      }
+
+      updateStep("extract", "done", `본문 ${body.body!.length}자 추출 및 AI 분석 완료.`);
       updateStep("review", "done", "게시 준비가 완료되었습니다.");
-      setDraft({ analysis: body.analysis, body: body.body, sourceUrl: body.sourceUrl });
+      setDraft({ analysis: body.analysis as IngestAnalyzeOutput, body: body.body!, sourceUrl: body.sourceUrl ?? null });
       setPhase("review");
-    } catch {
-      updateStep("extract", "error", "네트워크 오류가 발생했습니다.");
-      toast.error("네트워크 오류가 발생했습니다.");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.";
+      updateStep("extract", "error", message);
+      toast.error(message);
       setPhase("input");
     }
   }

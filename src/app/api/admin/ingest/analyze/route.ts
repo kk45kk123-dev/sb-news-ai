@@ -7,6 +7,10 @@ import { callAnthropic } from "@/server/ai/providers/anthropic.provider";
 import { extractJson } from "@/server/ai/json-extract";
 
 export const runtime = "nodejs";
+// Default Vercel function timeout (10s on Hobby) can be too tight for a
+// Claude call plus a possible schema-retry — raise the ceiling explicitly.
+// (Hobby plans are hard-capped at 10s regardless; Pro respects this value.)
+export const maxDuration = 60;
 
 const MODEL_KEY = "claude-haiku-4-5";
 const MAX_BODY_CHARS = 6000;
