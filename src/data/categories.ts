@@ -18,3 +18,18 @@ export function getCategoryById(id: string): Category | undefined {
 export function getCategoryBySlug(slug: string): Category | undefined {
   return CATEGORIES.find((c) => c.slug === slug);
 }
+
+const CATEGORY_GRADIENT: Record<string, [string, string]> = {
+  c1: ["#0F4C81", "#1D6FB8"],
+  c2: ["#0C6B54", "#12967A"],
+  c3: ["#4A4E93", "#6B6FC4"],
+  c4: ["#8A4A16", "#C97A2E"],
+  c5: ["#5B3FA0", "#8763D6"],
+  c6: ["#0F6E82", "#1CA0B8"],
+  c7: ["#146B3A", "#22A35A"],
+  c8: ["#8F2236", "#C43A54"],
+};
+
+export function getCategoryGradient(categoryId: string): [string, string] {
+  return CATEGORY_GRADIENT[categoryId] ?? CATEGORY_GRADIENT.c8!;
+}

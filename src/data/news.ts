@@ -1,4 +1,5 @@
 import type { News } from "@/lib/schemas/news.schema";
+import { getCategoryGradient } from "@/data/categories";
 
 function iso(daysAgo: number, h: number, m: number): string {
   const now = new Date();
@@ -14,15 +15,15 @@ function iso(daysAgo: number, h: number, m: number): string {
   return d.toISOString();
 }
 
-const GRADIENT: Record<"c1" | "c2" | "c3" | "c4" | "c5" | "c6" | "c7" | "c8", [string, string]> = {
-  c1: ["#0F4C81", "#1D6FB8"],
-  c2: ["#0C6B54", "#12967A"],
-  c3: ["#4A4E93", "#6B6FC4"],
-  c4: ["#8A4A16", "#C97A2E"],
-  c5: ["#5B3FA0", "#8763D6"],
-  c6: ["#0F6E82", "#1CA0B8"],
-  c7: ["#146B3A", "#22A35A"],
-  c8: ["#8F2236", "#C43A54"],
+const GRADIENT = {
+  c1: getCategoryGradient("c1"),
+  c2: getCategoryGradient("c2"),
+  c3: getCategoryGradient("c3"),
+  c4: getCategoryGradient("c4"),
+  c5: getCategoryGradient("c5"),
+  c6: getCategoryGradient("c6"),
+  c7: getCategoryGradient("c7"),
+  c8: getCategoryGradient("c8"),
 };
 
 export const NEWS: News[] = [

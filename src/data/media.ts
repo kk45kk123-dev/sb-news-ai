@@ -9,6 +9,8 @@ export const MEDIA_OUTLETS: Media[] = [
   { id: "m6", name: "서울경제", initial: "서경" },
   { id: "m7", name: "파이낸셜뉴스", initial: "파뉴" },
   { id: "m8", name: "헤럴드경제", initial: "헤경" },
+  { id: "m-external", name: "외부 링크", initial: "외부" },
+  { id: "m-direct", name: "직접 등록", initial: "등록" },
 ];
 
 export function getMediaById(id: string): Media | undefined {

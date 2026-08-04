@@ -10,7 +10,9 @@ const nextConfig: NextConfig = {
   // Bundling bullmq/ioredis through webpack makes that unresolvable import
   // a hard build failure; treating them as external Node requires instead
   // resolves them at runtime like a normal server dependency.
-  serverExternalPackages: ["bullmq", "ioredis"],
+  // jsdom (used for server-side article extraction) relies on dynamic
+  // requires that webpack can't statically bundle.
+  serverExternalPackages: ["bullmq", "ioredis", "jsdom"],
 };
 
 export default nextConfig;

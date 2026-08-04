@@ -2,63 +2,35 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { CheckCircle2, LinkIcon, FileText, Sparkles, ExternalLink, RotateCcw } from "lucide-react";
-import { getCategoryById } from "@/data/categories";
+import { CheckCircle2, LinkIcon, FileText, Sparkles, ExternalLink, RotateCcw, AlertCircle } from "lucide-react";
+import { CATEGORIES, getCategoryById, getCategoryGradient } from "@/data/categories";
 import { getMediaById } from "@/data/media";
-import { PIPELINE_STEP_DEFS, createInitialPipelineSteps, pickNextIncomingArticle } from "@/lib/api/admin";
-import type { IncomingArticle } from "@/data/incoming-pool";
-import { ingestInputSchema } from "@/lib/schemas/admin.schema";
+import { createInitialPipelineSteps } from "@/lib/api/admin";
 import type { PipelineStep, PipelineStepStatus } from "@/lib/schemas/admin.schema";
+import type { IngestAnalyzeOutput } from "@/lib/schemas/ingest.schema";
+import { ingestInputSchema } from "@/lib/schemas/admin.schema";
 import { useCommitIngestMutation } from "@/lib/query/use-admin";
 import type { News } from "@/lib/schemas/news.schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PipelineStepper } from "@/components/admin/pipeline-stepper";
 import { NewsThumbnail } from "@/components/news/news-thumbnail";
 import { CategoryBadge } from "@/components/news/category-badge";
-import { AiImportance } from "@/components/news/ai-importance";
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+type Phase = "input" | "running" | "review" | "done";
+
+interface DraftArticle {
+  analysis: IngestAnalyzeOutput;
+  body: string;
+  sourceUrl: string | null;
 }
-
-function stepDetail(stepId: string, article: IncomingArticle, sourceLabel: string): string {
-  const category = getCategoryById(article.categoryId);
-  const media = getMediaById(article.mediaId);
-  switch (stepId) {
-    case "extract":
-      return `${sourceLabel}에서 본문을 추출했습니다.`;
-    case "parse":
-      return `본문 ${article.body.length}자 분석 완료.`;
-    case "dedupe":
-      return "유사 기사가 발견되지 않았습니다.";
-    case "summarize":
-      return "AI 3줄 요약을 생성했습니다.";
-    case "keywords":
-      return `핵심 키워드 ${article.keywords.length}개를 추출했습니다.`;
-    case "categorize":
-      return `"${category?.name}" 카테고리로 분류했습니다.`;
-    case "tag":
-      return `태그 ${article.tags.length}개를 생성했습니다.`;
-    case "thumbnail":
-      return "대표 이미지를 설정했습니다.";
-    case "media":
-      return `언론사 정보(${media?.name})를 등록했습니다.`;
-    case "publish":
-      return "게시글 초안을 생성했습니다.";
-    case "expose":
-      return "메인 뉴스 피드에 자동 노출되었습니다.";
-    default:
-      return "";
-  }
-}
-
-type Phase = "input" | "running" | "done";
 
 export default function AdminNewsIngestPage() {
   const [mode, setMode] = React.useState<"url" | "text">("url");
@@ -67,9 +39,8 @@ export default function AdminNewsIngestPage() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [phase, setPhase] = React.useState<Phase>("input");
   const [steps, setSteps] = React.useState<PipelineStep[]>(createInitialPipelineSteps());
-  const [article, setArticle] = React.useState<IncomingArticle | null>(null);
+  const [draft, setDraft] = React.useState<DraftArticle | null>(null);
   const [createdNews, setCreatedNews] = React.useState<News | null>(null);
-  const runIdRef = React.useRef(0);
 
   const commitMutation = useCommitIngestMutation();
 
@@ -77,60 +48,75 @@ export default function AdminNewsIngestPage() {
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status, detail: detail ?? s.detail } : s)));
   }
 
-  async function startPipeline() {
+  async function startAnalysis() {
     const parsed = ingestInputSchema.safeParse({ mode, url: mode === "url" ? url : undefined, text: mode === "text" ? text : undefined });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message ?? "입력값을 확인해주세요.");
       return;
     }
     setFormError(null);
-
-    const runId = ++runIdRef.current;
-    const picked = pickNextIncomingArticle();
-    setArticle(picked);
     setSteps(createInitialPipelineSteps());
     setPhase("running");
-
-    const sourceLabel = mode === "url" ? url : "붙여넣은 원문";
-
-    for (const def of PIPELINE_STEP_DEFS) {
-      if (runIdRef.current !== runId) return;
-      updateStep(def.id, "running");
-      await sleep(450 + Math.random() * 350);
-      if (runIdRef.current !== runId) return;
-      updateStep(def.id, "done", stepDetail(def.id, picked, sourceLabel));
-    }
+    updateStep("extract", "running");
 
     try {
+      const res = await fetch("/api/admin/ingest/analyze", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode, url: mode === "url" ? url : undefined, text: mode === "text" ? text : undefined }),
+      });
+      const body = await res.json();
+
+      if (!res.ok) {
+        updateStep("extract", "error", body.error ?? "분석에 실패했습니다.");
+        toast.error(body.error ?? "분석에 실패했습니다.");
+        setPhase("input");
+        return;
+      }
+
+      updateStep("extract", "done", `본문 ${body.body.length}자 추출 및 AI 분석 완료.`);
+      updateStep("review", "done", "게시 준비가 완료되었습니다.");
+      setDraft({ analysis: body.analysis, body: body.body, sourceUrl: body.sourceUrl });
+      setPhase("review");
+    } catch {
+      updateStep("extract", "error", "네트워크 오류가 발생했습니다.");
+      toast.error("네트워크 오류가 발생했습니다.");
+      setPhase("input");
+    }
+  }
+
+  async function publish() {
+    if (!draft) return;
+    const media = draft.sourceUrl ? getMediaById("m-external") : getMediaById("m-direct");
+    try {
       const created = await commitMutation.mutateAsync({
-        title: picked.title,
-        thumbnailGradient: picked.thumbnailGradient,
-        mediaId: picked.mediaId,
-        reporter: picked.reporter,
+        title: draft.analysis.title,
+        thumbnailGradient: getCategoryGradient(draft.analysis.categoryId),
+        mediaId: media?.id ?? "m-direct",
+        reporter: "관리자 등록",
         publishedAt: new Date().toISOString(),
         viewCount: 0,
         likeCount: 0,
-        categoryId: picked.categoryId,
-        tags: picked.tags,
-        summaryBullets: picked.summaryBullets,
-        body: picked.body,
-        keywords: picked.keywords,
-        aiImportance: picked.aiImportance,
-        financialImpact: picked.financialImpact,
-        savingsBankImpact: picked.savingsBankImpact,
-        sentiment: picked.sentiment,
-        aiConfidence: picked.aiConfidence,
-        isAiRecommended: picked.isAiRecommended,
+        categoryId: draft.analysis.categoryId,
+        tags: draft.analysis.tags,
+        summaryBullets: draft.analysis.summaryBullets as [string, string, string],
+        body: draft.body,
+        keywords: draft.analysis.keywords,
+        aiImportance: 3,
+        financialImpact: 3,
+        savingsBankImpact: 3,
+        sentiment: "neutral",
+        aiConfidence: "low",
+        isAiRecommended: false,
         status: "published",
         scheduledAt: null,
-        sourceUrl: mode === "url" ? url : null,
+        sourceUrl: draft.sourceUrl,
       });
       setCreatedNews(created);
       setPhase("done");
-      toast.success("기사가 자동으로 등록되어 메인에 노출되었습니다.");
+      toast.success("기사가 게시되어 메인 뉴스 목록에 표시됩니다.");
     } catch {
-      toast.error("게시글 생성에 실패했습니다.");
-      setPhase("input");
+      toast.error("게시에 실패했습니다.");
     }
   }
 
@@ -138,19 +124,21 @@ export default function AdminNewsIngestPage() {
     setPhase("input");
     setUrl("");
     setText("");
-    setArticle(null);
+    setDraft(null);
     setCreatedNews(null);
     setSteps(createInitialPipelineSteps());
   }
 
-  const isStepDone = (id: string) => steps.find((s) => s.id === id)?.status === "done";
+  function updateDraft(patch: Partial<IngestAnalyzeOutput>) {
+    setDraft((prev) => (prev ? { ...prev, analysis: { ...prev.analysis, ...patch } } : prev));
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight">기사 등록</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          뉴스 URL 또는 기사 전문을 입력하면 AI가 추출부터 게시까지 11단계를 자동으로 수행합니다.
+          뉴스 URL 또는 기사 전문을 입력하면 실제 본문을 추출하고 Claude API로 분석해 초안을 만듭니다.
         </p>
       </div>
 
@@ -158,7 +146,7 @@ export default function AdminNewsIngestPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">자동 등록</CardTitle>
-            <CardDescription>URL을 입력하거나 스크랩한 기사 전문을 붙여넣으세요. 관리자는 이후 단계를 직접 수행할 필요가 없습니다.</CardDescription>
+            <CardDescription>URL을 입력하거나 스크랩한 기사 전문을 붙여넣으세요.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Tabs value={mode} onValueChange={(v) => setMode(v as "url" | "text")}>
@@ -186,113 +174,150 @@ export default function AdminNewsIngestPage() {
                 />
               </TabsContent>
             </Tabs>
-            {formError && <p className="text-xs text-destructive">{formError}</p>}
-            <Button onClick={startPipeline} className="w-full sm:w-auto">
-              <Sparkles className="h-4 w-4" /> 자동 등록 시작
+            {formError && (
+              <p className="flex items-center gap-1.5 text-xs text-destructive">
+                <AlertCircle className="h-3.5 w-3.5" /> {formError}
+              </p>
+            )}
+            <Button onClick={startAnalysis} className="w-full sm:w-auto">
+              <Sparkles className="h-4 w-4" /> AI 분석 시작
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {(phase === "running" || phase === "done") && article && (
+      {phase === "running" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">처리 중</CardTitle>
+            <CardDescription>본문을 추출하고 Claude API로 분석하는 중입니다. 몇 초 정도 걸릴 수 있습니다.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PipelineStepper steps={steps} />
+          </CardContent>
+        </Card>
+      )}
+
+      {phase === "review" && draft && (
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">파이프라인 진행 상황</CardTitle>
-              <CardDescription>총 11단계를 순서대로 자동 수행합니다.</CardDescription>
+              <CardTitle className="text-base">AI 분석 결과 (검토 후 게시)</CardTitle>
+              <CardDescription>제목과 카테고리는 게시 전 수정할 수 있습니다.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <PipelineStepper steps={steps} />
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="draft-title">제목</Label>
+                <Input id="draft-title" value={draft.analysis.title} onChange={(e) => updateDraft({ title: e.target.value })} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>카테고리</Label>
+                <Select value={draft.analysis.categoryId} onValueChange={(v) => updateDraft({ categoryId: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>AI 요약 (3줄)</Label>
+                <ul className="space-y-1 rounded-lg bg-muted/50 p-3">
+                  {draft.analysis.summaryBullets.map((line, i) => (
+                    <li key={i} className="text-xs leading-relaxed text-muted-foreground">
+                      · {line}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>핵심 키워드 / 태그</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {draft.analysis.keywords.map((k) => (
+                    <span key={k} className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                      #{k}
+                    </span>
+                  ))}
+                  {draft.analysis.tags.map((t) => (
+                    <span key={t} className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>본문 미리보기</Label>
+                <p className="max-h-40 overflow-y-auto whitespace-pre-line rounded-lg border border-border p-3 text-xs leading-relaxed text-muted-foreground">
+                  {draft.body}
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={reset}>
+                  취소
+                </Button>
+                <Button onClick={publish} disabled={commitMutation.isPending}>
+                  {commitMutation.isPending ? "게시 중..." : "게시"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
           <Card className="h-fit">
             <CardHeader>
-              <CardTitle className="text-base">실시간 미리보기</CardTitle>
-              <CardDescription>단계가 완료될 때마다 실제 게시될 기사가 채워집니다.</CardDescription>
+              <CardTitle className="text-base">미리보기</CardTitle>
+              <CardDescription>실제 게시될 카드 모습입니다.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <AnimatePresence>
-                {isStepDone("thumbnail") && (
-                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-                    <NewsThumbnail categoryId={article.categoryId} gradient={article.thumbnailGradient} className="aspect-[16/9] w-full" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {isStepDone("extract") && (
-                <motion.h3 initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-base font-bold leading-snug">
-                  {article.title}
-                </motion.h3>
-              )}
-
-              <div className="flex flex-wrap items-center gap-2">
-                {isStepDone("categorize") && (
-                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-                    <CategoryBadge categoryId={article.categoryId} />
-                  </motion.div>
-                )}
-                {isStepDone("summarize") && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <AiImportance score={article.aiImportance} />
-                  </motion.div>
-                )}
-              </div>
-
-              {isStepDone("summarize") && (
-                <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
-                  {article.summaryBullets.map((line, i) => (
-                    <li key={i} className="text-xs leading-relaxed text-muted-foreground">
-                      · {line}
-                    </li>
-                  ))}
-                </motion.ul>
-              )}
-
-              {isStepDone("keywords") && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-wrap gap-1.5">
-                  {article.keywords.map((k) => (
-                    <span key={k} className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                      #{k}
-                    </span>
-                  ))}
-                </motion.div>
-              )}
-
-              {isStepDone("media") && (
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-muted-foreground">
-                  {getMediaById(article.mediaId)?.name} · {article.reporter}
-                </motion.p>
-              )}
-
-              {phase === "done" && createdNews && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 rounded-lg bg-success/10 p-3 text-sm font-semibold text-success"
-                >
-                  <CheckCircle2 className="h-4 w-4" /> 메인 뉴스에 게시되었습니다.
-                </motion.div>
-              )}
+              <NewsThumbnail
+                categoryId={draft.analysis.categoryId}
+                gradient={getCategoryGradient(draft.analysis.categoryId)}
+                className="aspect-[16/9] w-full"
+              />
+              <h3 className="text-base font-bold leading-snug">{draft.analysis.title}</h3>
+              <CategoryBadge categoryId={draft.analysis.categoryId} />
+              <p className="text-xs text-muted-foreground">
+                {draft.sourceUrl ? "외부 링크" : "직접 등록"} · {getCategoryById(draft.analysis.categoryId)?.name}
+              </p>
             </CardContent>
           </Card>
         </div>
       )}
 
       {phase === "done" && createdNews && (
-        <div className="flex flex-wrap gap-2">
-          <Button asChild>
-            <Link href={`/news/${createdNews.id}`} target="_blank">
-              <ExternalLink className="h-4 w-4" /> 게시된 기사 보기
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/admin/news">뉴스 관리로 이동</Link>
-          </Button>
-          <Button variant="ghost" onClick={reset}>
-            <RotateCcw className="h-4 w-4" /> 새 기사 등록
-          </Button>
-        </div>
+        <Card>
+          <CardContent className="space-y-4 pt-6">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 rounded-lg bg-success/10 p-3 text-sm font-semibold text-success"
+            >
+              <CheckCircle2 className="h-4 w-4" /> 메인 뉴스에 게시되었습니다.
+            </motion.div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link href={`/news/${createdNews.id}`} target="_blank">
+                  <ExternalLink className="h-4 w-4" /> 게시된 기사 보기
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/admin/news">뉴스 관리로 이동</Link>
+              </Button>
+              <Button variant="ghost" onClick={reset}>
+                <RotateCcw className="h-4 w-4" /> 새 기사 등록
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
