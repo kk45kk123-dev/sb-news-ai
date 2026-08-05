@@ -12,13 +12,14 @@ interface LikeButtonProps {
 }
 
 export function LikeButton({ newsId, likeCount, size = "sm" }: LikeButtonProps) {
-  const { isLiked, toggleLike } = useUserActivity();
+  const { isLiked, toggleLike, requireLogin } = useUserActivity();
   const liked = isLiked(newsId);
   const mutation = useLikeMutation(newsId, likeCount);
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!requireLogin()) return;
     const next = !liked;
     toggleLike(newsId);
     mutation.mutate(next);

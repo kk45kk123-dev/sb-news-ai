@@ -42,12 +42,3 @@ export function useDeleteNewsMutation() {
     onSuccess: () => invalidateNewsEverywhere(queryClient),
   });
 }
-
-export function useCommitIngestMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (article: Parameters<typeof adminApi.commitIngestedArticle>[0]) =>
-      adminApi.commitIngestedArticle(article),
-    onSuccess: () => invalidateNewsEverywhere(queryClient),
-  });
-}

@@ -2,6 +2,13 @@ import { createHash } from "node:crypto";
 import { prisma } from "@/server/db/client";
 import { Prisma } from "@prisma/client";
 import { hashUrl } from "@/lib/url";
+import {
+  updateManualArticle,
+  deleteManualArticle,
+  type ManualArticlePatch,
+} from "@/server/repositories/article.repository";
+import { toNewsDto } from "@/server/services/article.service";
+import type { News } from "@/lib/schemas/news.schema";
 
 export class DuplicateArticleError extends Error {
   constructor(public readonly existingArticleId: string) {
@@ -13,6 +20,7 @@ export interface PublishManualArticleInput {
   orgId: string;
   userId: string;
   title: string;
+  categoryId: string;
   summaryBullets: string[];
   keywords: string[];
   body: string;
@@ -101,11 +109,9 @@ async function resolveManualModel(modelKey: string) {
  * Persists a manually-ingested article (URL paste or raw text, reviewed and
  * published by an admin) as a real Article + Analysis row. Synchronous, no
  * queue — this bypasses the collector→dedupe→analyze BullMQ pipeline entirely
- * since the admin already supplied the analysis result.
- *
- * Read paths (news list/detail/bookmarks) still serve the localStorage mock
- * store as of this change — this call exists purely to make "게시" durable
- * and auditable server-side, and to reject actual duplicate publishes.
+ * since the admin already supplied the analysis result. This is what the
+ * public site (news list/detail/search/home) reads — see article.service.ts's
+ * toNewsDto for the read side of this same table.
  */
 export async function publishManualArticle(input: PublishManualArticleInput): Promise<{ articleId: string }> {
   const urlHash = computeUrlHash(input);
@@ -134,6 +140,8 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
           publishedAt: new Date(),
           pipelineStage: "analyzed",
           relevance: "relevant",
+          categoryId: input.categoryId,
+          status: "published",
         },
       });
 
@@ -170,4 +178,15 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
     }
     throw e;
   }
+}
+
+/** Admin edit — same table the public site reads, so a save is visible immediately. */
+export async function editManualArticle(id: string, orgId: string, patch: ManualArticlePatch): Promise<News | null> {
+  const updated = await updateManualArticle(id, orgId, patch);
+  return updated ? toNewsDto(updated) : null;
+}
+
+/** Admin delete — same table the public site reads, so a delete is invisible immediately. */
+export async function removeManualArticle(id: string, orgId: string): Promise<boolean> {
+  return deleteManualArticle(id, orgId);
 }

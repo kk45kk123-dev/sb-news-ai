@@ -8,6 +8,7 @@ import { publishManualArticle, DuplicateArticleError } from "@/server/services/m
 
 const publishRequestSchema = z.object({
   title: z.string().min(1),
+  categoryId: z.string().min(1),
   summaryBullets: z.array(z.string()).min(1),
   keywords: z.array(z.string()).default([]),
   body: z.string().min(1),

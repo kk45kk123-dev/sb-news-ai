@@ -73,10 +73,17 @@ export interface ListArticlesFilters {
   minImpact?: number;
   unreadOnly?: boolean;
   bookmarkedOnly?: boolean;
-  sort: "impact" | "recent" | "importance";
+  /** "latest"/"views" sort + paginate at the DB level. "impact" (= AI importance
+   *  score) still sorts in application code — see function doc below. */
+  sort: "latest" | "views" | "impact";
   offset: number;
   limit: number;
   userId?: string;
+  /** Public-site (mock-taxonomy) category filter — see Article.categoryId comment. */
+  categoryId?: string;
+  /** Defaults to ["published"] at the service layer for anonymous/reader callers. */
+  statuses?: string[];
+  aiRecommendedOnly?: boolean;
 }
 
 const articleListInclude = {
@@ -117,8 +124,14 @@ export async function listArticles(
   if (filters.sourceIds?.length) {
     where.sourceId = { in: filters.sourceIds };
   }
-  if (filters.minImpact) {
-    where.analyses = { some: { isCurrent: true, sbImpactScore: { gte: filters.minImpact } } };
+  if (filters.minImpact || filters.aiRecommendedOnly) {
+    where.analyses = {
+      some: {
+        isCurrent: true,
+        ...(filters.minImpact ? { sbImpactScore: { gte: filters.minImpact } } : {}),
+        ...(filters.aiRecommendedOnly ? { importance: { gte: 4 } } : {}),
+      },
+    };
   }
   if (filters.unreadOnly && filters.userId) {
     where.userStates = { none: { userId: filters.userId, isRead: true } };
@@ -126,13 +139,19 @@ export async function listArticles(
   if (filters.bookmarkedOnly && filters.userId) {
     where.userStates = { some: { userId: filters.userId, isBookmarked: true } };
   }
+  if (filters.categoryId) {
+    where.categoryId = filters.categoryId;
+  }
+  if (filters.statuses?.length) {
+    where.status = { in: filters.statuses };
+  }
 
-  if (filters.sort === "recent") {
+  if (filters.sort === "latest" || filters.sort === "views") {
     const [items, total] = await Promise.all([
       prisma.article.findMany({
         where,
         include: articleListInclude,
-        orderBy: { publishedAt: "desc" },
+        orderBy: filters.sort === "views" ? { viewCount: "desc" } : { publishedAt: "desc" },
         skip: filters.offset,
         take: filters.limit,
       }),
@@ -141,22 +160,147 @@ export async function listArticles(
     return { items, total };
   }
 
-  // impact/importance: 날짜 범위로 이미 좁힌 뒤 애플리케이션에서 정렬 (위 문서 참조)
+  // "impact" (AI importance score): list-relation orderBy can't reach into a
+  // filtered-to-current analysis row, so sort in application code after
+  // narrowing by the date range (fine at this project's volume — see doc above).
   const all = await prisma.article.findMany({
     where,
     include: articleListInclude,
     orderBy: { publishedAt: "desc" },
   });
-  const sorted = [...all].sort((a, b) => {
-    const scoreA = filters.sort === "impact" ? (a.analyses[0]?.sbImpactScore ?? 0) : (a.analyses[0]?.importance ?? 0);
-    const scoreB = filters.sort === "impact" ? (b.analyses[0]?.sbImpactScore ?? 0) : (b.analyses[0]?.importance ?? 0);
-    return scoreB - scoreA;
-  });
+  const sorted = [...all].sort((a, b) => (b.analyses[0]?.importance ?? 0) - (a.analyses[0]?.importance ?? 0));
   return { items: sorted.slice(filters.offset, filters.offset + filters.limit), total: all.length };
 }
 
 export async function findArticleWithRelations(id: string, orgId: string): Promise<ArticleWithRelations | null> {
   return prisma.article.findFirst({ where: { id, orgId }, include: articleListInclude });
+}
+
+const RELATED_LIMIT_DEFAULT = 4;
+
+/** Same categoryId (mock taxonomy), published, excluding the article itself. */
+export async function findRelatedArticles(
+  orgId: string,
+  categoryId: string,
+  excludeId: string,
+  limit = RELATED_LIMIT_DEFAULT
+): Promise<ArticleWithRelations[]> {
+  return prisma.article.findMany({
+    where: { orgId, status: "published", categoryId, id: { not: excludeId } },
+    include: articleListInclude,
+    orderBy: { publishedAt: "desc" },
+    take: limit,
+  });
+}
+
+/** Different categoryId but shares at least one keyword with the current article's analysis. */
+export async function findSameTopicArticles(
+  orgId: string,
+  categoryId: string | null,
+  keywords: string[],
+  excludeId: string,
+  limit = RELATED_LIMIT_DEFAULT
+): Promise<ArticleWithRelations[]> {
+  if (keywords.length === 0) return [];
+  return prisma.article.findMany({
+    where: {
+      orgId,
+      status: "published",
+      id: { not: excludeId },
+      ...(categoryId ? { categoryId: { not: categoryId } } : {}),
+      analyses: { some: { isCurrent: true, keywords: { hasSome: keywords } } },
+    },
+    include: articleListInclude,
+    orderBy: { publishedAt: "desc" },
+    take: limit,
+  });
+}
+
+export async function findPopularArticles(orgId: string, limit = 5): Promise<ArticleWithRelations[]> {
+  return prisma.article.findMany({
+    where: { orgId, status: "published" },
+    include: articleListInclude,
+    orderBy: { viewCount: "desc" },
+    take: limit,
+  });
+}
+
+export async function findArticlesByIds(orgId: string, ids: string[]): Promise<ArticleWithRelations[]> {
+  if (ids.length === 0) return [];
+  return prisma.article.findMany({
+    where: { orgId, id: { in: ids } },
+    include: articleListInclude,
+  });
+}
+
+export async function bumpViewCount(id: string): Promise<void> {
+  await prisma.article.update({ where: { id }, data: { viewCount: { increment: 1 } } });
+}
+
+export interface ManualArticlePatch {
+  title?: string;
+  categoryId?: string;
+  status?: string;
+  scheduledAt?: string | null;
+  summaryBullets?: [string, string, string];
+  keywords?: string[];
+  body?: string;
+}
+
+/** Edit surface for admin-published (manual-ingest) articles — see manual-publish.service.ts. */
+export async function updateManualArticle(
+  id: string,
+  orgId: string,
+  patch: ManualArticlePatch
+): Promise<ArticleWithRelations | null> {
+  const existing = await prisma.article.findFirst({ where: { id, orgId } });
+  if (!existing) return null;
+
+  await prisma.$transaction(async (tx) => {
+    if (
+      patch.title !== undefined ||
+      patch.categoryId !== undefined ||
+      patch.status !== undefined ||
+      patch.scheduledAt !== undefined ||
+      patch.body !== undefined
+    ) {
+      await tx.article.update({
+        where: { id },
+        data: {
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.categoryId !== undefined ? { categoryId: patch.categoryId } : {}),
+          ...(patch.status !== undefined ? { status: patch.status } : {}),
+          ...(patch.scheduledAt !== undefined
+            ? { scheduledAt: patch.scheduledAt ? new Date(patch.scheduledAt) : null }
+            : {}),
+          ...(patch.body !== undefined ? { rawContent: patch.body, description: patch.body.slice(0, 200) } : {}),
+        },
+      });
+    }
+    if (patch.summaryBullets !== undefined || patch.keywords !== undefined) {
+      const current = await tx.analysis.findFirst({ where: { articleId: id, isCurrent: true } });
+      if (current) {
+        await tx.analysis.update({
+          where: { id: current.id },
+          data: {
+            ...(patch.summaryBullets !== undefined ? { summaryLines: patch.summaryBullets } : {}),
+            ...(patch.keywords !== undefined
+              ? { keywords: patch.keywords }
+              : {}),
+          },
+        });
+      }
+    }
+  });
+
+  return prisma.article.findFirst({ where: { id, orgId }, include: articleListInclude });
+}
+
+export async function deleteManualArticle(id: string, orgId: string): Promise<boolean> {
+  const existing = await prisma.article.findFirst({ where: { id, orgId } });
+  if (!existing) return false;
+  await prisma.article.delete({ where: { id } });
+  return true;
 }
 
 const BRIEFING_CANDIDATE_LIMIT = 20; // F-03: "후보 20건을 AI에 넘겨 최종 5건과 선정 사유를 받는다"

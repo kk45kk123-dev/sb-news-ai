@@ -6,12 +6,10 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { CheckCircle2, LinkIcon, FileText, Sparkles, ExternalLink, RotateCcw, AlertCircle } from "lucide-react";
 import { CATEGORIES, getCategoryById, getCategoryGradient } from "@/data/categories";
-import { getMediaById } from "@/data/media";
 import { createInitialPipelineSteps } from "@/lib/api/admin";
 import type { PipelineStep, PipelineStepStatus } from "@/lib/schemas/admin.schema";
 import type { IngestAnalyzeOutput } from "@/lib/schemas/ingest.schema";
 import { ingestInputSchema } from "@/lib/schemas/admin.schema";
-import { useCommitIngestMutation } from "@/lib/query/use-admin";
 import { getCsrfToken } from "@/lib/csrf-client";
 import type { News } from "@/lib/schemas/news.schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -46,8 +44,7 @@ export default function AdminNewsIngestPage() {
   const [steps, setSteps] = React.useState<PipelineStep[]>(createInitialPipelineSteps());
   const [draft, setDraft] = React.useState<DraftArticle | null>(null);
   const [createdNews, setCreatedNews] = React.useState<News | null>(null);
-
-  const commitMutation = useCommitIngestMutation();
+  const [isPublishing, setIsPublishing] = React.useState(false);
 
   function updateStep(id: string, status: PipelineStepStatus, detail?: string) {
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status, detail: detail ?? s.detail } : s)));
@@ -125,16 +122,15 @@ export default function AdminNewsIngestPage() {
 
   async function publish() {
     if (!draft) return;
+    setIsPublishing(true);
 
-    // Persist to the real DB first (with duplicate detection) — only fall through
-    // to the demo/mock news store if that actually succeeds, so "게시" never
-    // reports success while silently failing to durably save anything.
     try {
       const res = await fetch("/api/v1/admin/articles", {
         method: "POST",
         headers: { "content-type": "application/json", "x-csrf-token": getCsrfToken() ?? "" },
         body: JSON.stringify({
           title: draft.analysis.title,
+          categoryId: draft.analysis.categoryId,
           summaryBullets: draft.analysis.summaryBullets,
           keywords: draft.analysis.keywords,
           body: draft.body,
@@ -154,41 +150,17 @@ export default function AdminNewsIngestPage() {
         toast.error(message);
         return;
       }
-    } catch {
-      toast.error("서버에 연결할 수 없어 게시하지 못했습니다.");
-      return;
-    }
 
-    const media = draft.sourceUrl ? getMediaById("m-external") : getMediaById("m-direct");
-    try {
-      const created = await commitMutation.mutateAsync({
-        title: draft.analysis.title,
-        thumbnailGradient: getCategoryGradient(draft.analysis.categoryId),
-        mediaId: media?.id ?? "m-direct",
-        reporter: "관리자 등록",
-        publishedAt: new Date().toISOString(),
-        viewCount: 0,
-        likeCount: 0,
-        categoryId: draft.analysis.categoryId,
-        tags: draft.analysis.tags,
-        summaryBullets: draft.analysis.summaryBullets as [string, string, string],
-        body: draft.body,
-        keywords: draft.analysis.keywords,
-        aiImportance: 3,
-        financialImpact: 3,
-        savingsBankImpact: 3,
-        sentiment: "neutral",
-        aiConfidence: "low",
-        isAiRecommended: false,
-        status: "published",
-        scheduledAt: null,
-        sourceUrl: draft.sourceUrl,
-      });
-      setCreatedNews(created);
+      const articleId = resBody.data.articleId as string;
+      const publishedRes = await fetch(`/api/v1/articles/${articleId}`);
+      const publishedBody = await publishedRes.json().catch(() => null);
+      setCreatedNews(publishedBody?.success ? publishedBody.data : null);
       setPhase("done");
       toast.success("기사가 게시되어 메인 뉴스 목록에 표시됩니다.");
     } catch {
-      toast.error("게시에 실패했습니다.");
+      toast.error("서버에 연결할 수 없어 게시하지 못했습니다.");
+    } finally {
+      setIsPublishing(false);
     }
   }
 
@@ -337,8 +309,8 @@ export default function AdminNewsIngestPage() {
                 <Button type="button" variant="outline" onClick={reset}>
                   취소
                 </Button>
-                <Button onClick={publish} disabled={commitMutation.isPending}>
-                  {commitMutation.isPending ? "게시 중..." : "게시"}
+                <Button onClick={publish} disabled={isPublishing}>
+                  {isPublishing ? "게시 중..." : "게시"}
                 </Button>
               </div>
             </CardContent>

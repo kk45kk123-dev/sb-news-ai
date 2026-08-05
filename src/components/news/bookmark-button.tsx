@@ -11,12 +11,13 @@ interface BookmarkButtonProps {
 }
 
 export function BookmarkButton({ newsId, size = "sm" }: BookmarkButtonProps) {
-  const { isBookmarked, toggleBookmark } = useUserActivity();
+  const { isBookmarked, toggleBookmark, requireLogin } = useUserActivity();
   const bookmarked = isBookmarked(newsId);
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!requireLogin()) return;
     toggleBookmark(newsId);
     toast.success(bookmarked ? "북마크에서 제거했습니다." : "북마크에 저장했습니다.");
   }

@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
+import { apiFetch } from "@/lib/api/http";
+import { setBookmark as apiSetBookmark } from "@/lib/api/news";
 
 interface UserActivityState {
   bookmarkedIds: string[];
@@ -8,7 +11,6 @@ interface UserActivityState {
   recentlyViewedIds: string[];
 }
 
-const STORAGE_KEY = "sb-news-activity";
 const RECENTLY_VIEWED_LIMIT = 12;
 
 const EMPTY_STATE: UserActivityState = { bookmarkedIds: [], likedIds: [], recentlyViewedIds: [] };
@@ -22,48 +24,82 @@ interface UserActivityContextValue {
   toggleLike: (id: string) => void;
   recentlyViewedIds: string[];
   addRecentlyViewed: (id: string) => void;
+  isLoggedIn: boolean;
+  /** Shows a "로그인이 필요합니다" toast and returns false when logged out — call before any mutating action. */
+  requireLogin: () => boolean;
 }
 
 const UserActivityContext = React.createContext<UserActivityContextValue | null>(null);
 
 /**
- * Client-only persisted activity state (bookmarks, likes, recently-viewed).
- * Backed by localStorage today; swap the two effects below for a Supabase
- * `user_article_states` table read/write once real accounts exist — every
- * consumer only talks to the functions this context exposes.
+ * Bookmarks/likes/recently-viewed now live in Postgres (UserArticleState),
+ * tied to the real session — this used to be a pure localStorage mock with
+ * no account concept at all, so anonymous visitors get empty state here
+ * (browsing itself stays open; only these three lists require login).
  */
 export function UserActivityProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = React.useState<UserActivityState>(EMPTY_STATE);
-  const hydrated = React.useRef(false);
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
 
-  React.useEffect(() => {
+  const refresh = React.useCallback(async () => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setState({ ...EMPTY_STATE, ...JSON.parse(raw) });
+      const data = await apiFetch<UserActivityState>("/api/v1/articles/my-activity");
+      setState(data);
     } catch {
-      // ignore malformed storage
+      setState(EMPTY_STATE);
     }
-    hydrated.current = true;
   }, []);
 
   React.useEffect(() => {
-    if (!hydrated.current) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    // /api/v1/auth/me is the actual source of truth for "logged in" (my-activity
+    // returns 200 with empty arrays either way) — check it once so requireLogin()
+    // doesn't have to guess from empty-vs-populated activity lists.
+    apiFetch("/api/v1/auth/me")
+      .then(() => {
+        setIsLoggedIn(true);
+        refresh();
+      })
+      .catch(() => setIsLoggedIn(false));
+  }, [refresh]);
 
-  const toggleBookmark = React.useCallback((id: string) => {
-    setState((s) => ({
-      ...s,
-      bookmarkedIds: s.bookmarkedIds.includes(id) ? s.bookmarkedIds.filter((x) => x !== id) : [...s.bookmarkedIds, id],
-    }));
-  }, []);
+  const requireLogin = React.useCallback(() => {
+    if (!isLoggedIn) {
+      toast.error("로그인이 필요합니다.");
+      return false;
+    }
+    return true;
+  }, [isLoggedIn]);
 
-  const toggleLike = React.useCallback((id: string) => {
-    setState((s) => ({
-      ...s,
-      likedIds: s.likedIds.includes(id) ? s.likedIds.filter((x) => x !== id) : [...s.likedIds, id],
-    }));
-  }, []);
+  const toggleBookmark = React.useCallback(
+    (id: string) => {
+      if (!requireLogin()) return;
+      const wasBookmarked = state.bookmarkedIds.includes(id);
+      setState((s) => ({
+        ...s,
+        bookmarkedIds: wasBookmarked ? s.bookmarkedIds.filter((x) => x !== id) : [...s.bookmarkedIds, id],
+      }));
+      apiSetBookmark(id, !wasBookmarked).catch(() => {
+        setState((s) => ({
+          ...s,
+          bookmarkedIds: wasBookmarked ? [...s.bookmarkedIds, id] : s.bookmarkedIds.filter((x) => x !== id),
+        }));
+        toast.error("북마크 저장에 실패했습니다.");
+      });
+    },
+    [state.bookmarkedIds, requireLogin]
+  );
+
+  const toggleLike = React.useCallback(
+    (id: string) => {
+      // Persistence + count are handled by useLikeMutation (src/lib/query/use-news.ts) —
+      // this just flips the local "am I liking this" flag LikeButton reads.
+      setState((s) => ({
+        ...s,
+        likedIds: s.likedIds.includes(id) ? s.likedIds.filter((x) => x !== id) : [...s.likedIds, id],
+      }));
+    },
+    []
+  );
 
   const addRecentlyViewed = React.useCallback((id: string) => {
     setState((s) => ({
@@ -82,8 +118,10 @@ export function UserActivityProvider({ children }: { children: React.ReactNode }
       toggleLike,
       recentlyViewedIds: state.recentlyViewedIds,
       addRecentlyViewed,
+      isLoggedIn,
+      requireLogin,
     }),
-    [state, toggleBookmark, toggleLike, addRecentlyViewed]
+    [state, toggleBookmark, toggleLike, addRecentlyViewed, isLoggedIn, requireLogin]
   );
 
   return <UserActivityContext.Provider value={value}>{children}</UserActivityContext.Provider>;

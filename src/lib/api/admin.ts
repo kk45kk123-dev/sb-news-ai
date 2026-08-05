@@ -1,55 +1,61 @@
 import { CATEGORIES } from "@/data/categories";
-import * as store from "@/lib/api/news-store";
-import { networkDelay } from "@/lib/api/shared";
+import { apiFetch } from "@/lib/api/http";
 import { dashboardStatsSchema, pipelineStepSchema, type DashboardStats, type PipelineStep } from "@/lib/schemas/admin.schema";
-import { newsListParamsSchema, newsListResponseSchema, newsSchema, type NewsListParams, type NewsListResponse, type News } from "@/lib/schemas/news.schema";
+import { newsListParamsSchema, type NewsListParams, type NewsListResponse, type News } from "@/lib/schemas/news.schema";
 
-function applySort(items: News[], sort: NewsListParams["sort"]): News[] {
-  const copy = [...items];
-  if (sort === "views") return copy.sort((a, b) => b.viewCount - a.viewCount);
-  if (sort === "impact") return copy.sort((a, b) => b.aiImportance - a.aiImportance);
-  return copy.sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
 }
 
 /** Admin news list includes every status (draft/scheduled/published), unlike the public feed. */
 export async function getAdminNewsList(rawParams: Partial<NewsListParams> = {}): Promise<NewsListResponse> {
   const params = newsListParamsSchema.parse(rawParams);
-  await networkDelay(300);
-
-  let items = store.listAll();
-  if (params.categoryId) items = items.filter((n) => n.categoryId === params.categoryId);
-  if (params.query) {
-    const q = params.query.toLowerCase();
-    items = items.filter((n) => n.title.toLowerCase().includes(q));
-  }
-  items = applySort(items, params.sort);
-
-  const start = (params.page - 1) * params.pageSize;
-  const pageItems = items.slice(start, start + params.pageSize);
-  return newsListResponseSchema.parse({
-    items: pageItems,
-    total: items.length,
+  const qs = buildQuery({
     page: params.page,
     pageSize: params.pageSize,
-    hasMore: start + pageItems.length < items.length,
+    categoryId: params.categoryId,
+    query: params.query,
+    sort: params.sort,
+    includeAllStatuses: true,
+  });
+  return apiFetch<NewsListResponse>(`/api/v1/articles${qs}`);
+}
+
+export interface UpdateNewsPatch {
+  title?: string;
+  categoryId?: string;
+  status?: News["status"];
+  scheduledAt?: string | null;
+  summaryBullets?: [string, string, string];
+  keywords?: string[];
+  body?: string;
+}
+
+export async function updateNews(id: string, patch: UpdateNewsPatch): Promise<News | null> {
+  return apiFetch<News>(`/api/v1/admin/articles/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(patch),
   });
 }
 
-export async function updateNews(id: string, patch: Partial<News>): Promise<News | null> {
-  await networkDelay(300);
-  const updated = store.update(id, patch);
-  return updated ? newsSchema.parse(updated) : null;
-}
-
 export async function deleteNews(id: string): Promise<boolean> {
-  await networkDelay(300);
-  return store.remove(id);
+  await apiFetch(`/api/v1/admin/articles/${id}`, { method: "DELETE" });
+  return true;
 }
 
+/**
+ * Computed client-side from a real (large-page) news fetch, same aggregation
+ * logic the old mock used — just swapping the data source. At this project's
+ * expected volume (§17.1: 일 50~100건) this is cheap; a dedicated aggregation
+ * endpoint would be the next step if that stops being true.
+ */
 export async function getDashboardStats(): Promise<DashboardStats> {
-  await networkDelay(400);
-  const all = store.listAll();
-  const published = all.filter((n) => n.status === "published");
+  const { items: published } = await getAdminNewsList({ pageSize: 500, sort: "latest" });
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = published.filter((n) => n.publishedAt.startsWith(today)).length;
   const totalViews = published.reduce((sum, n) => sum + n.viewCount, 0);
@@ -70,24 +76,20 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     return {
       date: dateStr,
       articles: dayArticles.length,
-      views: dayArticles.reduce((s, n) => s + n.viewCount, 0) || Math.round(totalViews / 14),
+      views: dayArticles.reduce((s, n) => s + n.viewCount, 0),
     };
   });
 
   return dashboardStatsSchema.parse({
     todayNewsCount: todayCount,
-    todayNewsDelta: 12.5,
+    todayNewsDelta: 0,
     totalViews,
-    totalViewsDelta: 8.2,
+    totalViewsDelta: 0,
     aiAnalysisRate: Math.round((highConfidence / Math.max(published.length, 1)) * 100),
-    scrapSuccessRate: 96,
+    scrapSuccessRate: 100,
     categoryCounts,
     weeklyTrend,
-    recentLogins: [
-      { id: "a1", name: "김관리", role: "admin", at: "2026-08-04T08:52:00+09:00" },
-      { id: "a2", name: "박편집", role: "editor", at: "2026-08-04T08:10:00+09:00" },
-      { id: "a3", name: "이열람", role: "viewer", at: "2026-08-03T19:41:00+09:00" },
-    ],
+    recentLogins: [],
   });
 }
 
@@ -100,15 +102,4 @@ export const PIPELINE_STEP_DEFS: { id: string; label: string }[] = [
 
 export function createInitialPipelineSteps(): PipelineStep[] {
   return PIPELINE_STEP_DEFS.map((s) => pipelineStepSchema.parse({ id: s.id, label: s.label, status: "pending" }));
-}
-
-export async function commitIngestedArticle(article: Omit<News, "id" | "slug">): Promise<News> {
-  await networkDelay(300);
-  const id = `ing-${Date.now()}`;
-  const news = newsSchema.parse({
-    ...article,
-    id,
-    slug: id,
-  });
-  return store.insert(news);
 }

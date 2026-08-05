@@ -246,6 +246,18 @@ model Article {
   relevance        RelevanceType @default(unknown)
   collectedAt      DateTime      @default(now()) @map("collected_at") @db.Timestamptz
 
+  // Public-site fields (added for the manual-publish/reader-facing flow — the
+  // automated collector pipeline leaves these at their defaults). categoryId
+  // is the site's fixed 8-category taxonomy (src/data/categories.ts, "c1".."c8"),
+  // deliberately kept separate from the Category/ArticleCategory model above,
+  // which belongs to a different, org-configurable taxonomy the collector
+  // pipeline uses. Reconciling the two taxonomies is out of scope here.
+  categoryId    String?   @map("category_id") @db.VarChar(20)
+  viewCount     Int       @default(0) @map("view_count")
+  likeCount     Int       @default(0) @map("like_count")
+  status        String    @default("published") @db.VarChar(20) // "published" | "scheduled" | "draft"
+  scheduledAt   DateTime? @map("scheduled_at") @db.Timestamptz
+
   organization      Organization       @relation(fields: [orgId], references: [id])
   source             Source             @relation(fields: [sourceId], references: [id])
   analyses           Analysis[]
@@ -259,6 +271,7 @@ model Article {
   @@index([clusterId], map: "idx_articles_cluster")
   @@index([pipelineStage], map: "idx_articles_pipeline_stage")
   @@index([publishedAt], map: "idx_articles_purge_due")
+  @@index([orgId, status, categoryId, publishedAt(sort: Desc)], map: "idx_articles_public_list")
   @@map("articles")
 }
 
@@ -367,6 +380,8 @@ model UserArticleState {
   readAt        DateTime? @map("read_at") @db.Timestamptz
   isBookmarked  Boolean   @default(false) @map("is_bookmarked")
   bookmarkedAt  DateTime? @map("bookmarked_at") @db.Timestamptz
+  isLiked       Boolean   @default(false) @map("is_liked")
+  likedAt       DateTime? @map("liked_at") @db.Timestamptz
   memo          String?
   folder        String?   @db.VarChar(100)
   rating        FeedbackRating?

@@ -1,115 +1,82 @@
-import * as store from "@/lib/api/news-store";
-import { networkDelay } from "@/lib/api/shared";
+import { apiFetch, ApiRequestError } from "@/lib/api/http";
 import {
   newsListParamsSchema,
-  newsListResponseSchema,
-  newsSchema,
-  type News,
   type NewsListParams,
   type NewsListResponse,
+  type News,
 } from "@/lib/schemas/news.schema";
 
-function publishedOnly(items: News[]): News[] {
-  return items.filter((n) => n.status === "published");
-}
-
-function applyFilters(items: News[], params: NewsListParams): News[] {
-  let result = items;
-  if (params.categoryId) {
-    result = result.filter((n) => n.categoryId === params.categoryId);
+function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") search.set(key, String(value));
   }
-  if (params.mediaId) {
-    result = result.filter((n) => n.mediaId === params.mediaId);
-  }
-  if (params.query) {
-    const q = params.query.toLowerCase();
-    result = result.filter(
-      (n) =>
-        n.title.toLowerCase().includes(q) ||
-        n.keywords.some((k) => k.toLowerCase().includes(q)) ||
-        n.summaryBullets.some((s) => s.toLowerCase().includes(q))
-    );
-  }
-  if (params.dateFrom) {
-    result = result.filter((n) => n.publishedAt >= params.dateFrom!);
-  }
-  if (params.dateTo) {
-    result = result.filter((n) => n.publishedAt <= params.dateTo!);
-  }
-  return result;
-}
-
-function applySort(items: News[], sort: NewsListParams["sort"]): News[] {
-  const copy = [...items];
-  if (sort === "views") return copy.sort((a, b) => b.viewCount - a.viewCount);
-  if (sort === "impact") return copy.sort((a, b) => b.aiImportance - a.aiImportance);
-  return copy.sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
 }
 
 export async function getNewsList(rawParams: Partial<NewsListParams> = {}): Promise<NewsListResponse> {
   const params = newsListParamsSchema.parse(rawParams);
-  await networkDelay();
-
-  const filtered = applySort(applyFilters(publishedOnly(store.listAll()), params), params.sort);
-  const start = (params.page - 1) * params.pageSize;
-  const pageItems = filtered.slice(start, start + params.pageSize);
-
-  return newsListResponseSchema.parse({
-    items: pageItems,
-    total: filtered.length,
+  const qs = buildQuery({
     page: params.page,
     pageSize: params.pageSize,
-    hasMore: start + pageItems.length < filtered.length,
+    categoryId: params.categoryId,
+    query: params.query,
+    dateFrom: params.dateFrom,
+    dateTo: params.dateTo,
+    sort: params.sort,
   });
+  return apiFetch<NewsListResponse>(`/api/v1/articles${qs}`);
 }
 
 export async function getNewsDetail(id: string): Promise<News | null> {
-  await networkDelay(250);
-  const item = store.findById(id);
-  return item ? newsSchema.parse(item) : null;
+  try {
+    return await apiFetch<News>(`/api/v1/articles/${id}`);
+  } catch (e) {
+    if (e instanceof ApiRequestError && e.status === 404) return null;
+    throw e;
+  }
 }
 
 export async function getRelatedNews(id: string, limit = 4): Promise<News[]> {
-  await networkDelay(200);
-  const current = store.findById(id);
-  if (!current) return [];
-  return publishedOnly(store.listAll())
-    .filter((n) => n.id !== id && n.categoryId === current.categoryId)
-    .slice(0, limit);
+  return apiFetch<News[]>(`/api/v1/articles/${id}/related${buildQuery({ limit })}`);
 }
 
 export async function getSameTopicNews(id: string, limit = 4): Promise<News[]> {
-  await networkDelay(200);
-  const current = store.findById(id);
-  if (!current) return [];
-  return publishedOnly(store.listAll())
-    .filter((n) => n.id !== id && n.categoryId !== current.categoryId && n.tags.some((t) => current.tags.includes(t)))
-    .slice(0, limit);
+  return apiFetch<News[]>(`/api/v1/articles/${id}/same-topic${buildQuery({ limit })}`);
 }
 
 export async function getPopularNews(limit = 5): Promise<News[]> {
-  await networkDelay(200);
-  return applySort(publishedOnly(store.listAll()), "views").slice(0, limit);
+  return apiFetch<News[]>(`/api/v1/articles/popular${buildQuery({ limit })}`);
 }
 
 export async function getAiRecommendedNews(limit = 4): Promise<News[]> {
-  await networkDelay(200);
-  return publishedOnly(store.listAll())
-    .filter((n) => n.isAiRecommended)
-    .slice(0, limit);
+  return apiFetch<News[]>(`/api/v1/articles/ai-recommended${buildQuery({ limit })}`);
 }
 
 export async function getNewsByIds(ids: string[]): Promise<News[]> {
-  await networkDelay(200);
-  const byId = new Map(store.listAll().map((n) => [n.id, n] as const));
-  return ids.map((id) => byId.get(id)).filter((n): n is News => !!n);
+  if (ids.length === 0) return [];
+  return apiFetch<News[]>(`/api/v1/articles/by-ids${buildQuery({ ids: ids.join(",") })}`);
 }
 
+/** Bumps the public view counter (no login required) and, if logged in, the reader's own read state. */
 export async function incrementView(id: string): Promise<void> {
-  store.bumpView(id);
+  await apiFetch(`/api/v1/articles/${id}/read`, { method: "POST" });
 }
 
+/** Requires login — throws ApiRequestError(401) otherwise, which callers surface as a toast. */
 export async function setLike(id: string, liked: boolean): Promise<number> {
-  await networkDelay(150);
-  return store.setLike(id, liked);
+  const { likeCount } = await apiFetch<{ likeCount: number }>(`/api/v1/articles/${id}/like`, {
+    method: "PUT",
+    body: JSON.stringify({ liked }),
+  });
+  return likeCount;
+}
+
+/** Requires login — throws ApiRequestError(401) otherwise, which callers surface as a toast. */
+export async function setBookmark(id: string, bookmarked: boolean): Promise<void> {
+  await apiFetch(`/api/v1/articles/${id}/bookmark`, {
+    method: "PUT",
+    body: JSON.stringify({ bookmarked }),
+  });
 }

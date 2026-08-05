@@ -1,6 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import * as newsApi from "@/lib/api/news";
 import { queryKeys } from "@/lib/query/keys";
 import type { News, NewsListParams, NewsListResponse } from "@/lib/schemas/news.schema";
@@ -94,8 +95,9 @@ export function useLikeMutation(newsId: string, currentLikeCount: number) {
       patchLikeCountEverywhere(queryClient, newsId, optimisticCount);
       return { previousCount: currentLikeCount };
     },
-    onError: (_err, _liked, context) => {
+    onError: (err, _liked, context) => {
       if (context) patchLikeCountEverywhere(queryClient, newsId, context.previousCount);
+      toast.error(err instanceof Error ? err.message : "좋아요 처리에 실패했습니다.");
     },
     onSuccess: (serverLikeCount) => {
       patchLikeCountEverywhere(queryClient, newsId, serverLikeCount);

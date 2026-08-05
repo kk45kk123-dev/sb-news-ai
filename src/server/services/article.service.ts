@@ -2,146 +2,162 @@ import { z } from "zod";
 import {
   listArticles,
   findArticleWithRelations,
+  findRelatedArticles,
+  findSameTopicArticles,
+  findPopularArticles,
+  findArticlesByIds,
   type ArticleWithRelations,
 } from "@/server/repositories/article.repository";
-import {
-  getStatesForArticles,
-  getState,
-} from "@/server/repositories/user-article-state.repository";
+import { getCategoryGradient } from "@/data/categories";
+import { newsSchema, type News, type Sentiment } from "@/lib/schemas/news.schema";
 
-const DEFAULT_LIST_WINDOW_DAYS = 30; // §17.1: 목록 쿼리는 항상 날짜 범위로 제한
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100; // §18.1: 모든 목록 API에 상한
+// NOTE: this file used to also define a separate ArticleDto/listArticlesForOrg/
+// getArticleDetail vertical for the automated-collector-pipeline's own detail
+// shape (categories as real Category rows, isRead/isBookmarked/memo inline).
+// It had zero live callers — /api/v1/articles* was rewired to the mock-shaped
+// News DTO below during the Sprint 2 mock->real-DB migration — so it was
+// removed rather than left to bit-rot alongside a differently-typed sort enum.
+// listArticles()/findArticleWithRelations() (still below, in article.repository.ts)
+// remain shared by both the dormant pipeline and this public-facing path.
 
-export const listArticlesQuerySchema = z.object({
-  q: z.string().trim().min(1).optional(),
-  categories: z.string().optional(), // 콤마 구분 slug 목록
-  sources: z.string().optional(), // 콤마 구분 source id 목록
-  date_from: z.string().datetime().optional(),
-  date_to: z.string().datetime().optional(),
-  min_impact: z.coerce.number().int().min(1).max(5).optional(),
-  unread_only: z.coerce.boolean().optional(),
-  bookmarked_only: z.coerce.boolean().optional(),
-  sort: z.enum(["impact", "recent", "importance"]).default("impact"),
-  cursor: z.coerce.number().int().min(0).default(0),
-  limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
-});
-
-export type ListArticlesQuery = z.infer<typeof listArticlesQuerySchema>;
-
-export interface ArticleDto {
-  id: string;
-  title: string;
-  description: string | null;
-  url: string;
-  publisher: string | null;
-  publishedAt: string;
-  imageUrl: string | null;
-  isPaywalled: boolean;
-  isRead: boolean;
-  isBookmarked: boolean;
-  memo: string | null;
-  source: { id: string; name: string };
-  categories: { name: string; slug: string; rank: number }[];
-  analysis: {
-    summaryLines: string[];
-    keywords: string[];
-    importance: number;
-    sbImpactScore: number;
-    sbImpactDirection: string;
-    sbImpactReason: string;
-    customerImpact: string | null;
-    digitalImpact: string | null;
-    risks: string[];
-    actionIdeas: string[];
-    aiComment: string | null;
-    evidence: unknown;
-    confidence: string;
-  } | null;
+function mapSentiment(direction: string | undefined): Sentiment {
+  if (direction === "positive" || direction === "negative") return direction;
+  return "neutral"; // "mixed" (real-only value) and missing analysis both fall back to neutral
 }
 
-export function toArticleDto(
-  article: ArticleWithRelations,
-  userState?: { isRead: boolean; isBookmarked: boolean; memo: string | null }
-): ArticleDto {
+/**
+ * Reshapes a real Article+Analysis row into the site's mock News contract
+ * (src/lib/schemas/news.schema.ts) so every existing UI component — built
+ * against that shape during the mock-UI migration — keeps working unchanged
+ * against real data. See Article.categoryId/viewCount/likeCount/status field
+ * comments in schema.prisma for why those columns exist. Bookmark/like state
+ * isn't part of this shape (the mock kept it in a separate client-side
+ * activity context, now backed by /api/v1/articles/my-activity).
+ */
+export function toNewsDto(article: ArticleWithRelations): News {
   const analysis = article.analyses[0];
-  return {
+  const categoryId = article.categoryId ?? "c8";
+  const isExternal = !article.url.startsWith("internal://");
+  const summaryBullets = analysis?.summaryLines.length === 3 ? analysis.summaryLines : ["", "", ""];
+
+  return newsSchema.parse({
     id: article.id,
+    slug: article.id,
     title: article.title,
-    description: article.description,
-    url: article.url,
-    publisher: article.publisher,
+    thumbnailGradient: getCategoryGradient(categoryId),
+    mediaId: isExternal ? "m-external" : "m-direct",
+    reporter: article.author ?? "관리자 등록",
     publishedAt: article.publishedAt.toISOString(),
-    imageUrl: article.imageUrl,
-    isPaywalled: article.isPaywalled,
-    isRead: userState?.isRead ?? false,
-    isBookmarked: userState?.isBookmarked ?? false,
-    memo: userState?.memo ?? null,
-    source: { id: article.source.id, name: article.source.name },
-    categories: article.categories.map((c) => ({
-      name: c.category.name,
-      slug: c.category.slug,
-      rank: c.rank,
-    })),
-    analysis: analysis
-      ? {
-          summaryLines: analysis.summaryLines,
-          keywords: analysis.keywords,
-          importance: analysis.importance,
-          sbImpactScore: analysis.sbImpactScore,
-          sbImpactDirection: analysis.sbImpactDirection,
-          sbImpactReason: analysis.sbImpactReason,
-          customerImpact: analysis.customerImpact,
-          digitalImpact: analysis.digitalImpact,
-          risks: analysis.risks,
-          actionIdeas: analysis.actionIdeas,
-          aiComment: analysis.aiComment,
-          evidence: analysis.evidence,
-          confidence: analysis.confidence,
-        }
-      : null,
-  };
+    viewCount: article.viewCount,
+    likeCount: article.likeCount,
+    categoryId,
+    tags: analysis?.keywords ?? [],
+    summaryBullets,
+    body: article.rawContent ?? "",
+    keywords: analysis?.keywords ?? [],
+    aiImportance: analysis?.importance ?? 3,
+    financialImpact: analysis?.sbImpactScore ?? 3,
+    savingsBankImpact: analysis?.sbImpactScore ?? 3,
+    sentiment: mapSentiment(analysis?.sbImpactDirection),
+    aiConfidence: analysis?.confidence ?? "low",
+    isAiRecommended: (analysis?.importance ?? 0) >= 4,
+    status: article.status,
+    scheduledAt: article.scheduledAt?.toISOString() ?? null,
+    sourceUrl: isExternal ? article.url : null,
+  });
 }
 
-export async function listArticlesForOrg(
+export const publicNewsListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(9),
+  categoryId: z.string().optional(),
+  query: z.string().trim().min(1).optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  sort: z.enum(["latest", "views", "impact"]).default("latest"),
+  aiOnly: z.coerce.boolean().optional(),
+  /** Admin-only — includes draft/scheduled articles. The route re-derives this from the
+   *  session role rather than trusting the client value, so coercing a client-sent string
+   *  is safe here (worst case a non-admin's "true" gets overridden back to false). */
+  includeAllStatuses: z.coerce.boolean().optional(),
+});
+export type PublicNewsListQuery = z.infer<typeof publicNewsListQuerySchema>;
+
+const PUBLIC_LIST_WINDOW_DAYS = 3650; // reader-facing lists have no natural "recent window" — show everything
+
+export async function listPublicNews(
   orgId: string,
-  query: ListArticlesQuery,
-  userId?: string
-): Promise<{ items: ArticleDto[]; total: number; nextCursor: number | null }> {
-  const dateTo = query.date_to ? new Date(query.date_to) : new Date();
-  const dateFrom = query.date_from
-    ? new Date(query.date_from)
-    : new Date(dateTo.getTime() - DEFAULT_LIST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  query: PublicNewsListQuery
+): Promise<{ items: News[]; total: number; page: number; pageSize: number; hasMore: boolean }> {
+  const dateTo = query.dateTo ? new Date(query.dateTo) : new Date();
+  const dateFrom = query.dateFrom
+    ? new Date(query.dateFrom)
+    : new Date(dateTo.getTime() - PUBLIC_LIST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
   const { items, total } = await listArticles({
     orgId,
-    q: query.q,
-    categorySlugs: query.categories?.split(",").filter(Boolean),
-    sourceIds: query.sources?.split(",").filter(Boolean),
+    q: query.query,
     dateFrom,
     dateTo,
-    minImpact: query.min_impact,
-    unreadOnly: query.unread_only,
-    bookmarkedOnly: query.bookmarked_only,
     sort: query.sort,
-    offset: query.cursor,
-    limit: query.limit,
-    userId,
+    categoryId: query.categoryId,
+    aiRecommendedOnly: query.aiOnly,
+    statuses: query.includeAllStatuses ? undefined : ["published"],
+    offset: (query.page - 1) * query.pageSize,
+    limit: query.pageSize,
   });
 
-  const states = userId ? await getStatesForArticles(userId, items.map((a) => a.id)) : new Map();
-
-  const nextOffset = query.cursor + items.length;
   return {
-    items: items.map((a) => toArticleDto(a, states.get(a.id))),
+    items: items.map((a) => toNewsDto(a)),
     total,
-    nextCursor: nextOffset < total ? nextOffset : null,
+    page: query.page,
+    pageSize: query.pageSize,
+    hasMore: query.page * query.pageSize < total,
   };
 }
 
-export async function getArticleDetail(id: string, orgId: string, userId?: string): Promise<ArticleDto | null> {
+export async function getPublicNewsDetail(id: string, orgId: string, userId?: string): Promise<News | null> {
   const article = await findArticleWithRelations(id, orgId);
-  if (!article) return null;
-  const state = userId ? await getState(userId, id) : null;
-  return toArticleDto(article, state ?? undefined);
+  if (!article || (article.status !== "published" && !userId)) return null;
+  return toNewsDto(article);
+}
+
+export async function getRelatedPublicNews(id: string, orgId: string, limit = 4): Promise<News[]> {
+  const current = await findArticleWithRelations(id, orgId);
+  if (!current) return [];
+  const related = await findRelatedArticles(orgId, current.categoryId ?? "c8", id, limit);
+  return related.map((a) => toNewsDto(a));
+}
+
+export async function getSameTopicPublicNews(id: string, orgId: string, limit = 4): Promise<News[]> {
+  const current = await findArticleWithRelations(id, orgId);
+  if (!current) return [];
+  const keywords = current.analyses[0]?.keywords ?? [];
+  const sameTopic = await findSameTopicArticles(orgId, current.categoryId, keywords, id, limit);
+  return sameTopic.map((a) => toNewsDto(a));
+}
+
+export async function getPopularPublicNews(orgId: string, limit = 5): Promise<News[]> {
+  const items = await findPopularArticles(orgId, limit);
+  return items.map((a) => toNewsDto(a));
+}
+
+export async function getAiRecommendedPublicNews(orgId: string, limit = 4): Promise<News[]> {
+  const { items } = await listArticles({
+    orgId,
+    dateFrom: new Date(Date.now() - PUBLIC_LIST_WINDOW_DAYS * 24 * 60 * 60 * 1000),
+    dateTo: new Date(),
+    sort: "latest",
+    aiRecommendedOnly: true,
+    statuses: ["published"],
+    offset: 0,
+    limit,
+  });
+  return items.map((a) => toNewsDto(a));
+}
+
+export async function getPublicNewsByIds(orgId: string, ids: string[]): Promise<News[]> {
+  const items = await findArticlesByIds(orgId, ids);
+  const byId = new Map(items.map((a) => [a.id, toNewsDto(a)] as const));
+  return ids.map((id) => byId.get(id)).filter((n): n is News => !!n);
 }
