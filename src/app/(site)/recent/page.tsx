@@ -12,7 +12,7 @@ export default function RecentPage() {
   return (
     <div className="container space-y-6 py-8">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
+        <h1 className="flex items-center gap-2 text-page-title">
           <History className="h-6 w-6 text-muted-foreground" /> 최근 본 기사
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">최근에 열람한 뉴스 순서대로 표시됩니다.</p>
@@ -21,6 +21,7 @@ export default function RecentPage() {
         items={recentlyViewedIds.length ? data : []}
         isLoading={recentlyViewedIds.length > 0 && isLoading}
         emptyMessage="아직 열람한 뉴스가 없습니다."
+        emptyIcon={History}
       />
     </div>
   );

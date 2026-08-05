@@ -21,7 +21,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Dashboard</h1>
+        <h1 className="text-page-title">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">오늘의 SB NEWS AI 운영 현황입니다.</p>
       </div>
 

@@ -69,7 +69,7 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">AI 분석</h1>
+        <h1 className="text-page-title">AI 분석</h1>
         <p className="mt-1 text-sm text-muted-foreground">등록된 전체 기사에 대한 AI 분석 결과 분포입니다. (총 {items.length}건)</p>
       </div>
 

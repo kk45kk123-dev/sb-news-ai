@@ -9,7 +9,7 @@ export default function NotFound() {
         <Compass className="h-9 w-9 text-muted-foreground" strokeWidth={1.5} />
       </div>
       <div className="space-y-2">
-        <h1 className="text-2xl font-extrabold tracking-tight">페이지를 찾을 수 없습니다</h1>
+        <h1 className="text-page-title">페이지를 찾을 수 없습니다</h1>
         <p className="max-w-sm text-sm text-muted-foreground">
           주소가 변경되었거나 삭제된 페이지일 수 있습니다. 홈으로 돌아가 다시 찾아보세요.
         </p>

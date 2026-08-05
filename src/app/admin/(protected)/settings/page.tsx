@@ -23,7 +23,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">설정</h1>
+        <h1 className="text-page-title">설정</h1>
         <p className="mt-1 text-sm text-muted-foreground">서비스 운영 및 파이프라인 관련 설정을 관리합니다.</p>
       </div>
 

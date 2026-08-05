@@ -152,7 +152,7 @@ export default function AdminNewsIngestPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">기사 등록</h1>
+        <h1 className="text-page-title">기사 등록</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           뉴스 URL 또는 기사 전문을 입력하면 실제 본문을 추출하고 Claude API로 분석해 초안을 만듭니다.
         </p>

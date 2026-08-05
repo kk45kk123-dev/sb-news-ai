@@ -34,7 +34,7 @@ export default function AdminCategoriesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">카테고리 관리</h1>
+        <h1 className="text-page-title">카테고리 관리</h1>
         <p className="mt-1 text-sm text-muted-foreground">서비스 전반에서 사용되는 뉴스 카테고리 체계입니다.</p>
       </div>
 

@@ -51,7 +51,7 @@ function NewsListPageContent() {
   return (
     <div className="container space-y-6 py-8">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">
+        <h1 className="text-page-title">
           {aiOnly ? "AI 추천 뉴스" : category ? category.name : "전체 뉴스"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">

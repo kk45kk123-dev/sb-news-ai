@@ -103,13 +103,16 @@ const config: Config = {
         md: "calc(var(--radius) - 4px)",
         sm: "calc(var(--radius) - 8px)",
         xl: "calc(var(--radius) + 4px)",
-        note: "10px",
+        note: "12px",
       },
       boxShadow: {
         soft: "0 1px 2px rgba(15,23,42,0.04), 0 1px 1px rgba(15,23,42,0.03)",
         card: "0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04)",
         "card-hover": "0 12px 32px rgba(15,23,42,0.10), 0 4px 10px rgba(15,23,42,0.05)",
         popover: "0 16px 40px rgba(15,23,42,0.16)",
+        // Notion-style layered tooltip shadow — one tight contact shadow
+        // plus one soft ambient one, instead of a single hard drop shadow.
+        note: "0 2px 6px rgba(15,23,42,0.08), 0 8px 24px rgba(15,23,42,0.10)",
       },
       keyframes: {
         "accordion-down": {

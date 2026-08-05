@@ -115,6 +115,36 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Digits stay a fixed width so counts/timestamps don't shift the layout
+     as they update (view counts, relative time, stat tiles). */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Shared typography scale — every heading/body/caption in the app reads
+     off these instead of ad-hoc text-size + leading combinations, so the
+     same "level" of text always looks the same everywhere. */
+  .text-page-title {
+    @apply text-2xl font-extrabold leading-tight tracking-tight text-foreground;
+  }
+  .text-article-title {
+    @apply text-[28px] font-extrabold leading-[1.25] tracking-[-0.02em] text-foreground sm:text-[34px];
+  }
+  .text-card-title {
+    @apply text-[15.5px] font-bold leading-snug tracking-[-0.01em] text-foreground;
+  }
+  .text-body-copy {
+    @apply text-[16px] leading-[1.9] tracking-[-0.003em] text-foreground/90;
+  }
+  .text-caption {
+    @apply text-[13px] leading-relaxed text-muted-foreground;
+  }
+  .text-meta {
+    @apply text-[12.5px] leading-normal text-muted-foreground;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, Eye, Info, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronDown, Eye, Info, Newspaper, Sparkles } from "lucide-react";
 import { getMediaById } from "@/data/media";
 import { relativeTime, formatCount } from "@/lib/format";
 import { incrementView } from "@/lib/api/news";
@@ -47,23 +47,46 @@ export default function NewsDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-3xl space-y-4 py-8">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="aspect-[2/1] w-full rounded-2xl" />
-        <Skeleton className="h-8 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-40 w-full rounded-xl" />
+      <div className="container max-w-3xl space-y-8 py-8">
+        <Skeleton className="h-5 w-20" />
+        <div className="space-y-4">
+          <Skeleton className="aspect-[2/1] w-full rounded-2xl" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-9 w-[85%]" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+        <div className="mx-auto w-full max-w-[640px] space-y-8">
+          <Skeleton className="h-32 w-full rounded-2xl" />
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-[92%]" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-[70%]" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!news) {
     return (
-      <div className="container max-w-3xl py-20 text-center">
-        <p className="text-lg font-semibold">기사를 찾을 수 없습니다.</p>
-        <Link href="/news" className="mt-3 inline-block text-sm font-semibold text-primary">
-          전체 뉴스로 돌아가기
-        </Link>
+      <div className="container max-w-3xl py-8">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-24 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <Newspaper className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-base font-bold text-foreground">기사를 찾을 수 없습니다</p>
+            <p className="text-sm text-muted-foreground">삭제되었거나 잘못된 주소일 수 있습니다.</p>
+          </div>
+          <Link
+            href="/news"
+            className="mt-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors duration-[220ms] hover:bg-primary/90"
+          >
+            전체 뉴스로 돌아가기
+          </Link>
+        </div>
       </div>
     );
   }
@@ -91,89 +114,95 @@ export default function NewsDetailPage() {
           )}
         </div>
 
-        <h1 className="mt-3 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">{news.title}</h1>
+        <h1 className="mt-4 text-article-title">{news.title}</h1>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta">
           <span className="font-semibold text-foreground">{media?.name}</span>
-          <span>·</span>
+          <span className="text-border">·</span>
           <span>{news.reporter}</span>
-          <span>·</span>
+          <span className="text-border">·</span>
           <span>{relativeTime(news.publishedAt)}</span>
-          <span>·</span>
-          <span className="flex items-center gap-0.5">
+          <span className="text-border">·</span>
+          <span className="flex items-center gap-1 tabular-nums">
             <Eye className="h-3.5 w-3.5" /> 조회 {formatCount(news.viewCount)}
           </span>
         </div>
 
-        <div className="mt-4 flex items-center gap-4 border-y border-border py-3">
+        <div className="mt-5 flex items-center gap-4 border-y border-border py-3">
           <LikeButton newsId={news.id} likeCount={news.likeCount} size="md" />
           <BookmarkButton newsId={news.id} size="md" />
           <ShareButton title={news.title} path={`/news/${news.id}`} size="md" />
         </div>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-card">
-        <div className="mb-3 flex items-center gap-2">
-          <Badge variant="accent" className="gap-1">
-            <Sparkles className="h-3 w-3" /> AI 3줄 요약
-          </Badge>
-          <AiImportance score={news.aiImportance} />
-        </div>
-        <ul className="space-y-1.5">
-          {news.summaryBullets.map((line, i) => (
-            <li key={i} className="text-sm leading-relaxed text-foreground">
-              · {annotate(line)}
-            </li>
-          ))}
-        </ul>
+      {/* Narrower column than the page container — a hero image and meta
+          row read fine full-width, but a 65-75 character line length is
+          what keeps long-form Korean text comfortable to read. */}
+      <div className="mx-auto w-full max-w-[640px] space-y-8">
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-card">
+          <div className="mb-4 flex items-center gap-2">
+            <Badge variant="accent" className="gap-1">
+              <Sparkles className="h-3 w-3" /> AI 3줄 요약
+            </Badge>
+            <AiImportance score={news.aiImportance} />
+          </div>
+          <ul className="space-y-2">
+            {news.summaryBullets.map((line, i) => (
+              <li key={i} className="flex gap-2 text-[15px] leading-relaxed text-foreground">
+                <span className="text-primary">·</span>
+                <span>{annotate(line)}</span>
+              </li>
+            ))}
+          </ul>
 
-        <button
-          onClick={() => setAnalysisOpen((v) => !v)}
-          className="mt-4 flex items-center gap-1 text-sm font-semibold text-primary"
-          aria-expanded={analysisOpen}
-        >
-          {analysisOpen ? "AI 상세분석 접기" : "AI 상세분석 더보기"}
-          <ChevronDown className={cn("h-4 w-4 transition-transform duration-300", analysisOpen && "rotate-180")} />
-        </button>
+          <button
+            onClick={() => setAnalysisOpen((v) => !v)}
+            className="mt-5 flex items-center gap-1 text-sm font-semibold text-primary transition-colors duration-[220ms] hover:text-primary/80"
+            aria-expanded={analysisOpen}
+          >
+            {analysisOpen ? "AI 상세분석 접기" : "AI 상세분석 더보기"}
+            <ChevronDown className={cn("h-4 w-4 transition-transform duration-[250ms] ease-out", analysisOpen && "rotate-180")} />
+          </button>
 
-        <div
-          className={cn(
-            "grid overflow-hidden transition-[grid-template-rows] duration-300 ease-in-out",
-            analysisOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-          )}
-        >
-          <div className="min-h-0">
-            <div className="mt-4 space-y-3 border-t border-border pt-4">
-              <ImpactMeter label="금융 영향도" score={news.financialImpact} />
-              <ImpactMeter label="저축은행 영향도" score={news.savingsBankImpact} />
-              <div className="flex items-center gap-2 pt-1">
-                <SentimentBadge sentiment={news.sentiment} />
-                <ConfidenceBadge confidence={news.aiConfidence} />
+          <div
+            className={cn(
+              "grid overflow-hidden transition-[grid-template-rows] duration-[250ms] ease-out",
+              analysisOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+            )}
+          >
+            <div className="min-h-0">
+              <div className="mt-5 space-y-3 border-t border-border pt-5">
+                <ImpactMeter label="금융 영향도" score={news.financialImpact} />
+                <ImpactMeter label="저축은행 영향도" score={news.savingsBankImpact} />
+                <div className="flex items-center gap-2 pt-1">
+                  <SentimentBadge sentiment={news.sentiment} />
+                  <ConfidenceBadge confidence={news.aiConfidence} />
+                </div>
               </div>
             </div>
           </div>
+        </section>
+
+        <article>
+          <ArticleBody text={news.body} />
+        </article>
+
+        <div className="flex flex-wrap gap-2">
+          {news.keywords.map((kw) => (
+            <Link
+              key={kw}
+              href={`/search?q=${encodeURIComponent(kw)}`}
+              className="rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-[220ms] hover:bg-muted/70 hover:text-foreground"
+            >
+              #{kw}
+            </Link>
+          ))}
         </div>
-      </section>
 
-      <article>
-        <ArticleBody text={news.body} />
-      </article>
-
-      <div className="flex flex-wrap gap-2">
-        {news.keywords.map((kw) => (
-          <Link
-            key={kw}
-            href={`/search?q=${encodeURIComponent(kw)}`}
-            className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
-          >
-            #{kw}
-          </Link>
-        ))}
-      </div>
-
-      <div className="flex gap-2.5 rounded-xl bg-muted p-4 text-xs leading-relaxed text-muted-foreground">
-        <Info className="h-4 w-4 shrink-0" />
-        <p>본 분석은 AI가 기사 본문을 해석해 생성한 참고 자료이며, 실제 의사결정 시에는 원문과 관련 공시자료를 함께 확인하시기 바랍니다.</p>
+        <div className="flex gap-3 rounded-xl bg-muted p-4 text-caption">
+          <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <p>본 분석은 AI가 기사 본문을 해석해 생성한 참고 자료이며, 실제 의사결정 시에는 원문과 관련 공시자료를 함께 확인하시기 바랍니다.</p>
+        </div>
       </div>
 
       <RelatedNewsList title="관련 기사" items={related} isLoading={relatedLoading} />

@@ -20,7 +20,7 @@ export function RelatedNewsList({ title, items, isLoading }: RelatedNewsListProp
 
   return (
     <section>
-      <h2 className="mb-3 text-base font-bold tracking-tight">{title}</h2>
+      <h2 className="mb-4 text-[15px] font-bold tracking-tight text-foreground">{title}</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         {isLoading &&
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
@@ -31,20 +31,20 @@ export function RelatedNewsList({ title, items, isLoading }: RelatedNewsListProp
               <Link
                 key={item.id}
                 href={`/news/${item.id}`}
-                className="group flex gap-3 rounded-xl border border-border bg-card p-3 shadow-soft transition-shadow hover:shadow-card-hover"
+                className="group flex gap-4 rounded-xl border border-border bg-card p-4 shadow-soft transition-shadow duration-[220ms] ease-out hover:shadow-card-hover"
               >
                 <NewsThumbnail categoryId={item.categoryId} gradient={item.thumbnailGradient} className="h-20 w-24 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <CategoryBadge categoryId={item.categoryId} />
-                  <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:text-primary">
+                  <p className="mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors duration-[220ms] group-hover:text-primary">
                     {item.title}
                   </p>
-                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <div className="mt-1.5 flex items-center gap-1.5 text-meta">
                     <span>{media?.name}</span>
-                    <span>·</span>
+                    <span className="text-border">·</span>
                     <span>{relativeTime(item.publishedAt)}</span>
-                    <span>·</span>
-                    <span className="flex items-center gap-0.5">
+                    <span className="text-border">·</span>
+                    <span className="flex items-center gap-0.5 tabular-nums">
                       <Eye className="h-2.5 w-2.5" /> {formatCount(item.viewCount)}
                     </span>
                   </div>

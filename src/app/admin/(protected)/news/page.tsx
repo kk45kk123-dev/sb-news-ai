@@ -112,7 +112,7 @@ export default function AdminNewsListPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">뉴스 관리</h1>
+          <h1 className="text-page-title">뉴스 관리</h1>
           <p className="mt-1 text-sm text-muted-foreground">등록된 전체 기사를 관리합니다. (총 {data?.total ?? 0}건)</p>
         </div>
         {canEdit && (
@@ -170,7 +170,15 @@ export default function AdminNewsListPage() {
               ))}
             </div>
           ) : items.length === 0 ? (
-            <p className="p-10 text-center text-sm text-muted-foreground">조건에 맞는 기사가 없습니다.</p>
+            <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Search className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">조건에 맞는 기사가 없습니다</p>
+                <p className="text-xs text-muted-foreground">검색어나 필터 조건을 변경해 다시 시도해보세요.</p>
+              </div>
+            </div>
           ) : (
             <Table>
               <TableHeader>

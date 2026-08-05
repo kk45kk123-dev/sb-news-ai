@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { BookMarked } from "lucide-react";
+import { MOTION } from "@/lib/motion";
 
 interface TermNoteProps {
   term: string;
@@ -46,7 +48,7 @@ export function TermNote({ term, definition, children }: TermNoteProps) {
           e.stopPropagation();
           setOpen(true);
         }}
-        className="font-medium text-foreground underline decoration-dotted decoration-muted-foreground/60 underline-offset-[3px] transition-colors hover:text-primary"
+        className="rounded-[3px] font-semibold text-primary decoration-primary/40 decoration-dotted underline-offset-[3px] transition-colors duration-[220ms] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {children}
       </button>
@@ -55,14 +57,17 @@ export function TermNote({ term, definition, children }: TermNoteProps) {
           <motion.div
             ref={contentRef}
             role="tooltip"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="absolute left-1/2 top-full z-50 mt-2 w-max max-w-[260px] -translate-x-1/2 rounded-note border border-border bg-popover p-3 text-left shadow-popover"
+            initial={{ opacity: 0, y: 4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={MOTION.tooltip}
+            className="absolute left-1/2 top-full z-50 mt-2 w-max max-w-[280px] -translate-x-1/2 rounded-note border border-border bg-popover p-4 text-left shadow-note"
           >
-            <span className="mb-0.5 block text-xs font-semibold text-muted-foreground">{term}</span>
-            <span className="block text-sm leading-relaxed text-popover-foreground">{definition}</span>
+            <div className="mb-1.5 flex items-center gap-1.5">
+              <BookMarked className="h-3.5 w-3.5 text-primary" strokeWidth={2} />
+              <span className="text-[11px] font-bold uppercase tracking-wide text-primary">{term}</span>
+            </div>
+            <p className="text-[13.5px] leading-[1.65] text-popover-foreground">{definition}</p>
           </motion.div>
         )}
       </AnimatePresence>

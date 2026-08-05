@@ -48,7 +48,7 @@ function SearchPageContent() {
   return (
     <div className="container max-w-4xl space-y-6 py-8">
       <div>
-        <h1 className="mb-4 text-2xl font-extrabold tracking-tight">검색</h1>
+        <h1 className="mb-4 text-page-title">검색</h1>
         <SearchBar autoFocus={!query} />
       </div>
 
@@ -103,13 +103,21 @@ function SearchPageContent() {
             <p className="mb-4 text-sm text-muted-foreground">
               &ldquo;<span className="font-semibold text-foreground">{query}</span>&rdquo; 검색 결과 {data ? `${data.total}건` : ""}
             </p>
-            <NewsGrid items={data?.items} isLoading={isLoading} skeletonCount={6} emptyMessage="검색 결과가 없습니다. 다른 키워드로 시도해보세요." />
+            <NewsGrid
+              items={data?.items}
+              isLoading={isLoading}
+              skeletonCount={6}
+              emptyMessage="검색 결과가 없습니다. 다른 키워드로 시도해보세요."
+              emptyIcon={SearchIcon}
+            />
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border py-24 text-center">
-          <SearchIcon className="h-9 w-9 text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">키워드를 입력해 뉴스를 검색해보세요.</p>
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-24 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <SearchIcon className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+          </div>
+          <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">키워드를 입력해 뉴스를 검색해보세요.</p>
         </div>
       )}
     </div>
