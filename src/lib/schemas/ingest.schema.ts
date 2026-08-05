@@ -38,5 +38,9 @@ export const ingestAnalyzeResponseSchema = z.object({
   body: z.string(),
   sourceUrl: z.string().nullable(),
   extractedTitle: z.string().nullable(),
+  modelKey: z.string(),
+  tokenInput: z.number(),
+  tokenOutput: z.number(),
+  latencyMs: z.number(),
 });
 export type IngestAnalyzeResponse = z.infer<typeof ingestAnalyzeResponseSchema>;

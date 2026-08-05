@@ -22,13 +22,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return apiError(ErrorCode.NOT_FOUND, e instanceof Error ? e.message : "출처를 찾을 수 없습니다.", 404);
   }
 
-  await recordAudit({
-    orgId: ctx.user.orgId,
-    userId: ctx.user.id,
-    action: "admin.source.fetch_now",
-    targetType: "source",
-    targetId: id,
-  });
+  try {
+    await recordAudit({
+      orgId: ctx.user.orgId,
+      userId: ctx.user.id,
+      action: "admin.source.fetch_now",
+      targetType: "source",
+      targetId: id,
+    });
+  } catch (auditError) {
+    console.error("[admin/sources/[id]/fetch-now] recordAudit failed", auditError);
+  }
 
   return apiOk({ enqueued: true });
 }

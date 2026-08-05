@@ -19,7 +19,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const before = await findSourceById(id);
-  if (!before) {
+  if (!before || before.orgId !== ctx.user.orgId) {
     return apiError(ErrorCode.NOT_FOUND, "출처를 찾을 수 없습니다.", 404);
   }
 
@@ -28,17 +28,27 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return apiError(ErrorCode.VALIDATION_ERROR, parsed.error.issues[0]?.message ?? "잘못된 요청입니다.", 400);
   }
 
-  const source = await editSource(id, parsed.data);
+  let source;
+  try {
+    source = await editSource(id, parsed.data);
+  } catch (e) {
+    console.error("[admin/sources/[id]] editSource failed", e);
+    return apiError(ErrorCode.INTERNAL_ERROR, "출처 수정 중 오류가 발생했습니다.", 500);
+  }
 
-  await recordAudit({
-    orgId: ctx.user.orgId,
-    userId: ctx.user.id,
-    action: "admin.source.update",
-    targetType: "source",
-    targetId: id,
-    before: { name: before.name, url: before.url, fetchIntervalMin: before.fetchIntervalMin, isActive: before.isActive },
-    after: { name: source.name, url: source.url, fetchIntervalMin: source.fetchIntervalMin, isActive: source.isActive },
-  });
+  try {
+    await recordAudit({
+      orgId: ctx.user.orgId,
+      userId: ctx.user.id,
+      action: "admin.source.update",
+      targetType: "source",
+      targetId: id,
+      before: { name: before.name, url: before.url, fetchIntervalMin: before.fetchIntervalMin, isActive: before.isActive },
+      after: { name: source.name, url: source.url, fetchIntervalMin: source.fetchIntervalMin, isActive: source.isActive },
+    });
+  } catch (auditError) {
+    console.error("[admin/sources/[id]] recordAudit failed after successful update", auditError);
+  }
 
   return apiOk(source);
 }
@@ -55,7 +65,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const { id } = await params;
   const before = await findSourceById(id);
-  if (!before) {
+  if (!before || before.orgId !== ctx.user.orgId) {
     return apiError(ErrorCode.NOT_FOUND, "출처를 찾을 수 없습니다.", 404);
   }
 
@@ -69,17 +79,22 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         409
       );
     }
-    throw e;
+    console.error("[admin/sources/[id]] removeSource failed", e);
+    return apiError(ErrorCode.INTERNAL_ERROR, "출처 삭제 중 오류가 발생했습니다.", 500);
   }
 
-  await recordAudit({
-    orgId: ctx.user.orgId,
-    userId: ctx.user.id,
-    action: "admin.source.delete",
-    targetType: "source",
-    targetId: id,
-    before: { name: before.name, url: before.url },
-  });
+  try {
+    await recordAudit({
+      orgId: ctx.user.orgId,
+      userId: ctx.user.id,
+      action: "admin.source.delete",
+      targetType: "source",
+      targetId: id,
+      before: { name: before.name, url: before.url },
+    });
+  } catch (auditError) {
+    console.error("[admin/sources/[id]] recordAudit failed after successful delete", auditError);
+  }
 
   return apiOk({ deleted: true });
 }

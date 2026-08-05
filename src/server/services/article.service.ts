@@ -139,8 +139,8 @@ export async function listArticlesForOrg(
   };
 }
 
-export async function getArticleDetail(id: string, userId?: string): Promise<ArticleDto | null> {
-  const article = await findArticleWithRelations(id);
+export async function getArticleDetail(id: string, orgId: string, userId?: string): Promise<ArticleDto | null> {
+  const article = await findArticleWithRelations(id, orgId);
   if (!article) return null;
   const state = userId ? await getState(userId, id) : null;
   return toArticleDto(article, state ?? undefined);

@@ -31,14 +31,22 @@ export async function POST(req: NextRequest) {
   try {
     briefing = await generateTodaysBriefing(ctx.user.orgId, "manual");
   } catch (e) {
-    await recordAudit({ ...auditMeta, after: { success: false } });
+    try {
+      await recordAudit({ ...auditMeta, after: { success: false } });
+    } catch (auditError) {
+      console.error("[admin/briefings/regenerate] recordAudit failed after generation failure", auditError);
+    }
     if (e instanceof AiGatewayError) {
       return apiError(ErrorCode.AI_GENERATION_FAILED, "브리핑 생성에 실패했습니다. AI 모델/프롬프트 설정을 확인하세요.", 502);
     }
     throw e;
   }
 
-  await recordAudit({ ...auditMeta, after: { success: true, hasBriefing: briefing !== null } });
+  try {
+    await recordAudit({ ...auditMeta, after: { success: true, hasBriefing: briefing !== null } });
+  } catch (auditError) {
+    console.error("[admin/briefings/regenerate] recordAudit failed after success", auditError);
+  }
 
   if (!briefing) {
     return apiError(ErrorCode.NOT_FOUND, "브리핑을 생성할 뉴스가 없습니다 (분석 완료된 기사 0건).", 404);

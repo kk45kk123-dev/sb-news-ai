@@ -1,0 +1,173 @@
+import { createHash } from "node:crypto";
+import { prisma } from "@/server/db/client";
+import { Prisma } from "@prisma/client";
+import { hashUrl } from "@/lib/url";
+
+export class DuplicateArticleError extends Error {
+  constructor(public readonly existingArticleId: string) {
+    super("이미 게시된 기사입니다.");
+  }
+}
+
+export interface PublishManualArticleInput {
+  orgId: string;
+  userId: string;
+  title: string;
+  summaryBullets: string[];
+  keywords: string[];
+  body: string;
+  sourceUrl: string | null;
+  modelKey: string;
+  tokenInput: number;
+  tokenOutput: number;
+  latencyMs: number;
+}
+
+const MANUAL_SOURCE_NAME = "관리자 수동 등록";
+const MANUAL_PROMPT_NAME = "manual-ingest";
+
+/** urlHash is the article table's dedup key; text-only submissions have no URL to hash. */
+function computeUrlHash(input: Pick<PublishManualArticleInput, "sourceUrl" | "body">): string {
+  if (input.sourceUrl) return hashUrl(input.sourceUrl);
+  return createHash("sha256").update(`manual-text:${input.body}`).digest("hex");
+}
+
+async function findOrCreateManualSource(orgId: string) {
+  const existing = await prisma.source.findFirst({ where: { orgId, name: MANUAL_SOURCE_NAME } });
+  if (existing) return existing;
+  return prisma.source.create({
+    data: {
+      orgId,
+      name: MANUAL_SOURCE_NAME,
+      type: "scrape",
+      url: "internal://manual-ingest",
+      config: {},
+      categoryHints: [],
+      isActive: false, // never picked up by the RSS/scrape scheduler — publish-only marker
+      status: "ok",
+    },
+  });
+}
+
+/**
+ * The manual ingest route calls Claude directly (not through the AI Gateway —
+ * see ADR-007 exception noted in code review) so there's no PromptVersion row
+ * for what it actually sent. We record one lazily so the Analysis FK is honest
+ * about what generated it, instead of borrowing the automated pipeline's
+ * unrelated "analyze" prompt version.
+ */
+async function findOrCreateManualPromptVersion(userId: string) {
+  const prompt = await prisma.prompt.upsert({
+    where: { taskType_name: { taskType: "analyze", name: MANUAL_PROMPT_NAME } },
+    update: {},
+    create: {
+      taskType: "analyze",
+      name: MANUAL_PROMPT_NAME,
+      description: "관리자 URL/텍스트 수동 등록 화면에서 사용하는 경량 분석 프롬프트 (AI Gateway 미경유)",
+    },
+  });
+
+  const existingVersion = await prisma.promptVersion.findFirst({
+    where: { promptId: prompt.id, isActive: true },
+  });
+  if (existingVersion) return existingVersion;
+
+  return prisma.promptVersion.create({
+    data: {
+      promptId: prompt.id,
+      version: 1,
+      systemPrompt: "src/app/api/admin/ingest/analyze/route.ts::buildSystemPrompt()",
+      userTemplate: "src/app/api/admin/ingest/analyze/route.ts::buildUserPrompt()",
+      variables: {},
+      outputSchema: {},
+      isActive: true,
+      createdBy: userId,
+      notes: "코드에서 직접 관리되는 프롬프트 — 실제 텍스트는 route.ts 참조.",
+    },
+  });
+}
+
+async function resolveManualModel(modelKey: string) {
+  const model = await prisma.aiModel.findFirst({ where: { modelKey: { startsWith: modelKey } } });
+  if (model) return model;
+  // Seed data may version the key differently (e.g. "-20251001" suffix) — fall
+  // back to any active anthropic model rather than hard-failing the publish.
+  const fallback = await prisma.aiModel.findFirst({ where: { provider: "anthropic", isActive: true } });
+  if (!fallback) throw new Error(`No AiModel row found for modelKey=${modelKey} and no anthropic fallback exists.`);
+  return fallback;
+}
+
+/**
+ * Persists a manually-ingested article (URL paste or raw text, reviewed and
+ * published by an admin) as a real Article + Analysis row. Synchronous, no
+ * queue — this bypasses the collector→dedupe→analyze BullMQ pipeline entirely
+ * since the admin already supplied the analysis result.
+ *
+ * Read paths (news list/detail/bookmarks) still serve the localStorage mock
+ * store as of this change — this call exists purely to make "게시" durable
+ * and auditable server-side, and to reject actual duplicate publishes.
+ */
+export async function publishManualArticle(input: PublishManualArticleInput): Promise<{ articleId: string }> {
+  const urlHash = computeUrlHash(input);
+
+  const existing = await prisma.article.findUnique({ where: { urlHash } });
+  if (existing) throw new DuplicateArticleError(existing.id);
+
+  const [source, promptVersion, model] = await Promise.all([
+    findOrCreateManualSource(input.orgId),
+    findOrCreateManualPromptVersion(input.userId),
+    resolveManualModel(input.modelKey),
+  ]);
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const article = await tx.article.create({
+        data: {
+          orgId: input.orgId,
+          sourceId: source.id,
+          url: input.sourceUrl ?? `internal://manual/${urlHash.slice(0, 16)}`,
+          urlHash,
+          title: input.title,
+          description: input.summaryBullets.join(" "),
+          rawContent: input.body,
+          publisher: input.sourceUrl ? new URL(input.sourceUrl).hostname : "관리자 직접 등록",
+          publishedAt: new Date(),
+          pipelineStage: "analyzed",
+          relevance: "relevant",
+        },
+      });
+
+      await tx.analysis.create({
+        data: {
+          articleId: article.id,
+          summaryLines: input.summaryBullets,
+          keywords: input.keywords,
+          importance: 3,
+          sbImpactScore: 3,
+          sbImpactDirection: "neutral",
+          sbImpactReason: "관리자 수동 등록 — 세부 영향도 분석은 실행되지 않았습니다.",
+          risks: [],
+          actionIdeas: [],
+          evidence: [],
+          confidence: "low",
+          promptVersionId: promptVersion.id,
+          modelId: model.id,
+          tokenInput: input.tokenInput,
+          tokenOutput: input.tokenOutput,
+          latencyMs: input.latencyMs,
+          isCurrent: true,
+        },
+      });
+
+      return { articleId: article.id };
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      // Lost a race against a concurrent publish of the same URL between our
+      // findUnique check and the insert — treat it the same as a normal duplicate.
+      const raced = await prisma.article.findUnique({ where: { urlHash } });
+      throw new DuplicateArticleError(raced?.id ?? "unknown");
+    }
+    throw e;
+  }
+}

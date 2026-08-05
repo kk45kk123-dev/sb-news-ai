@@ -1,10 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CATEGORIES } from "@/data/categories";
 import { ingestAnalyzeRequestSchema, ingestAnalyzeOutputSchema } from "@/lib/schemas/ingest.schema";
 import { extractArticleFromUrl, ArticleExtractionError } from "@/server/ingest/extract-article";
 import { callAnthropic } from "@/server/ai/providers/anthropic.provider";
 import { extractJson } from "@/server/ai/json-extract";
+import { getAuthContext, hasRole, verifyCsrf } from "@/server/auth/guard";
+import { checkRateLimit } from "@/server/auth/rate-limit";
 
 export const runtime = "nodejs";
 // Default Vercel function timeout (10s on Hobby) can be too tight for a
@@ -15,6 +17,9 @@ export const maxDuration = 60;
 const MODEL_KEY = "claude-haiku-4-5";
 const MAX_BODY_CHARS = 6000;
 const MAX_ATTEMPTS = 2;
+// This endpoint pays for a Claude call on every request — cap it well below
+// what a legitimate admin doing manual article entry would ever need.
+const RATE_LIMIT_PER_HOUR = 20;
 
 function buildSystemPrompt(): string {
   const categoryList = CATEGORIES.map((c) => `- ${c.id}: ${c.name}`).join("\n");
@@ -44,7 +49,26 @@ function buildUserPrompt(body: string, titleHint: string | null): string {
   return `${titleHint ? `추출된 제목 후보: ${titleHint}\n\n` : ""}기사 본문:\n${truncated}`;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const ctx = await getAuthContext(req);
+  if (!ctx) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+  if (!hasRole(ctx.user.role, ["admin", "editor"])) {
+    return NextResponse.json({ error: "기사 등록 권한이 없습니다." }, { status: 403 });
+  }
+  if (!verifyCsrf(req, ctx)) {
+    return NextResponse.json({ error: "CSRF 토큰이 유효하지 않습니다." }, { status: 403 });
+  }
+
+  const { allowed } = await checkRateLimit(`ratelimit:ingest:${ctx.user.id}`, RATE_LIMIT_PER_HOUR, 3600);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `기사 등록은 시간당 ${RATE_LIMIT_PER_HOUR}회까지 가능합니다. 잠시 후 다시 시도해주세요.` },
+      { status: 429 }
+    );
+  }
+
   let payload: unknown;
   try {
     payload = await req.json();
@@ -80,6 +104,7 @@ export async function POST(req: Request) {
 
   let lastError: string = "AI 분석에 실패했습니다.";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    const startedAt = Date.now();
     try {
       const result = await callAnthropic({
         modelKey: MODEL_KEY,
@@ -88,6 +113,7 @@ export async function POST(req: Request) {
           attempt === 1 ? userPrompt : `${userPrompt}\n\n(이전 응답이 JSON 스키마를 위반했습니다. 반드시 유효한 JSON 객체 하나만 출력하세요.)`,
         maxTokens: 1024,
       });
+      const latencyMs = Date.now() - startedAt;
 
       const parsedJson = extractJson(result.text);
       const validated = ingestAnalyzeOutputSchema.safeParse(parsedJson);
@@ -101,6 +127,10 @@ export async function POST(req: Request) {
         body,
         sourceUrl,
         extractedTitle,
+        modelKey: MODEL_KEY,
+        tokenInput: result.tokenInput,
+        tokenOutput: result.tokenOutput,
+        latencyMs,
       });
     } catch (e) {
       if (e instanceof Anthropic.AuthenticationError) {

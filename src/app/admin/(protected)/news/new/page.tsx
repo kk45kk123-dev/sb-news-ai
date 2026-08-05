@@ -12,6 +12,7 @@ import type { PipelineStep, PipelineStepStatus } from "@/lib/schemas/admin.schem
 import type { IngestAnalyzeOutput } from "@/lib/schemas/ingest.schema";
 import { ingestInputSchema } from "@/lib/schemas/admin.schema";
 import { useCommitIngestMutation } from "@/lib/query/use-admin";
+import { getCsrfToken } from "@/lib/csrf-client";
 import type { News } from "@/lib/schemas/news.schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,10 @@ interface DraftArticle {
   analysis: IngestAnalyzeOutput;
   body: string;
   sourceUrl: string | null;
+  modelKey: string;
+  tokenInput: number;
+  tokenOutput: number;
+  latencyMs: number;
 }
 
 export default function AdminNewsIngestPage() {
@@ -64,14 +69,23 @@ export default function AdminNewsIngestPage() {
       try {
         res = await fetch("/api/admin/ingest/analyze", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", "x-csrf-token": getCsrfToken() ?? "" },
           body: JSON.stringify({ mode, url: mode === "url" ? url : undefined, text: mode === "text" ? text : undefined }),
         });
       } catch {
         throw new Error("서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.");
       }
 
-      let body: { error?: string; analysis?: unknown; body?: string; sourceUrl?: string | null };
+      let body: {
+        error?: string;
+        analysis?: unknown;
+        body?: string;
+        sourceUrl?: string | null;
+        modelKey?: string;
+        tokenInput?: number;
+        tokenOutput?: number;
+        latencyMs?: number;
+      };
       try {
         body = await res.json();
       } catch {
@@ -91,7 +105,15 @@ export default function AdminNewsIngestPage() {
 
       updateStep("extract", "done", `본문 ${body.body!.length}자 추출 및 AI 분석 완료.`);
       updateStep("review", "done", "게시 준비가 완료되었습니다.");
-      setDraft({ analysis: body.analysis as IngestAnalyzeOutput, body: body.body!, sourceUrl: body.sourceUrl ?? null });
+      setDraft({
+        analysis: body.analysis as IngestAnalyzeOutput,
+        body: body.body!,
+        sourceUrl: body.sourceUrl ?? null,
+        modelKey: body.modelKey ?? "unknown",
+        tokenInput: body.tokenInput ?? 0,
+        tokenOutput: body.tokenOutput ?? 0,
+        latencyMs: body.latencyMs ?? 0,
+      });
       setPhase("review");
     } catch (e) {
       const message = e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.";
@@ -103,6 +125,40 @@ export default function AdminNewsIngestPage() {
 
   async function publish() {
     if (!draft) return;
+
+    // Persist to the real DB first (with duplicate detection) — only fall through
+    // to the demo/mock news store if that actually succeeds, so "게시" never
+    // reports success while silently failing to durably save anything.
+    try {
+      const res = await fetch("/api/v1/admin/articles", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": getCsrfToken() ?? "" },
+        body: JSON.stringify({
+          title: draft.analysis.title,
+          summaryBullets: draft.analysis.summaryBullets,
+          keywords: draft.analysis.keywords,
+          body: draft.body,
+          sourceUrl: draft.sourceUrl,
+          modelKey: draft.modelKey,
+          tokenInput: draft.tokenInput,
+          tokenOutput: draft.tokenOutput,
+          latencyMs: draft.latencyMs,
+        }),
+      });
+      const resBody = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message =
+          res.status === 409
+            ? "이미 게시된 기사입니다. 동일한 URL 또는 본문이 이미 등록되어 있습니다."
+            : (resBody?.error?.message as string | undefined) ?? "기사 저장에 실패했습니다.";
+        toast.error(message);
+        return;
+      }
+    } catch {
+      toast.error("서버에 연결할 수 없어 게시하지 못했습니다.");
+      return;
+    }
+
     const media = draft.sourceUrl ? getMediaById("m-external") : getMediaById("m-direct");
     try {
       const created = await commitMutation.mutateAsync({

@@ -155,8 +155,8 @@ export async function listArticles(
   return { items: sorted.slice(filters.offset, filters.offset + filters.limit), total: all.length };
 }
 
-export async function findArticleWithRelations(id: string): Promise<ArticleWithRelations | null> {
-  return prisma.article.findUnique({ where: { id }, include: articleListInclude });
+export async function findArticleWithRelations(id: string, orgId: string): Promise<ArticleWithRelations | null> {
+  return prisma.article.findFirst({ where: { id, orgId }, include: articleListInclude });
 }
 
 const BRIEFING_CANDIDATE_LIMIT = 20; // F-03: "후보 20건을 AI에 넘겨 최종 5건과 선정 사유를 받는다"

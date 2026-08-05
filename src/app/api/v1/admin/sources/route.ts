@@ -33,14 +33,18 @@ export async function POST(req: NextRequest) {
 
   const source = await addSource(ctx.user.orgId, parsed.data);
 
-  await recordAudit({
-    orgId: ctx.user.orgId,
-    userId: ctx.user.id,
-    action: "admin.source.create",
-    targetType: "source",
-    targetId: source.id,
-    after: { name: source.name, url: source.url, type: source.type },
-  });
+  try {
+    await recordAudit({
+      orgId: ctx.user.orgId,
+      userId: ctx.user.id,
+      action: "admin.source.create",
+      targetType: "source",
+      targetId: source.id,
+      after: { name: source.name, url: source.url, type: source.type },
+    });
+  } catch (auditError) {
+    console.error("[admin/sources] recordAudit failed after successful create", auditError);
+  }
 
   return apiOk(source, undefined, 201);
 }
