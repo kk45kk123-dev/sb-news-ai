@@ -40,12 +40,12 @@ const config: Config = {
           subtle: "hsl(var(--muted))",
         },
         navy: {
-          900: "#0F4C81",
-          700: "#14315C",
+          900: "#55760A",
+          700: "#3D5A16",
         },
         blue: {
-          600: "#2563EB",
-          500: "#3B82F6",
+          600: "#528B18",
+          500: "#6BB125",
         },
         danger: "hsl(var(--destructive))",
         warning: "hsl(var(--accent))",
