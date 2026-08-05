@@ -33,7 +33,7 @@ function tooltipStyle() {
 
 export default function AdminAnalyticsPage() {
   const { data, isLoading } = useAdminNewsListQuery({ pageSize: 200 });
-  const items = data?.items ?? [];
+  const items = React.useMemo(() => data?.items ?? [], [data]);
   const resolvedColors = useCssVarColors(["--success", "--muted-foreground", "--destructive", "--accent"]);
 
   const sentimentData = React.useMemo(() => {

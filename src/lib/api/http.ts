@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { getCsrfToken } from "@/lib/csrf-client";
 
 export class ApiRequestError extends Error {
@@ -46,6 +47,14 @@ export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   }
 
   if (!res.ok || !body?.success) {
+    // A GET 401 is routine (every page optimistically checks /auth/me or
+    // /my-activity for anonymous visitors) — only a *mutating* request
+    // failing auth means a previously-logged-in session actually expired
+    // mid-action, which is worth telling the user about explicitly instead
+    // of just surfacing a generic "action failed" message.
+    if (res.status === 401 && method !== "GET") {
+      toast.error("세션이 만료되었습니다. 다시 로그인해주세요.");
+    }
     throw new ApiRequestError(body?.error?.message ?? `요청이 실패했습니다 (HTTP ${res.status}).`, res.status);
   }
   return body.data as T;

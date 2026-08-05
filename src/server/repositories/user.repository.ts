@@ -17,6 +17,10 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   return prisma.user.create({ data: input });
 }
 
+export async function listOrgUsers(orgId: string): Promise<User[]> {
+  return prisma.user.findMany({ where: { orgId }, orderBy: { createdAt: "desc" } });
+}
+
 export async function findUserById(id: string): Promise<User | null> {
   return prisma.user.findUnique({ where: { id } });
 }

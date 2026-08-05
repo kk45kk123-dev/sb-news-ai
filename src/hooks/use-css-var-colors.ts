@@ -23,7 +23,6 @@ export function useCssVarColors(varNames: string[]): Record<string, string> {
       next[name] = `hsl(${styles.getPropertyValue(name).trim()})`;
     }
     setColors(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, resolvedTheme]);
 
   return colors;

@@ -233,8 +233,14 @@ export async function findArticlesByIds(orgId: string, ids: string[]): Promise<A
   });
 }
 
+/**
+ * updateMany (not update) deliberately — a view-count bump for an article
+ * that's since been deleted (a stale tab, a bookmarked dead link) is a
+ * no-op, not an error. update() throws P2025 when the id doesn't match any
+ * row; updateMany() just reports 0 rows affected and returns normally.
+ */
 export async function bumpViewCount(id: string): Promise<void> {
-  await prisma.article.update({ where: { id }, data: { viewCount: { increment: 1 } } });
+  await prisma.article.updateMany({ where: { id }, data: { viewCount: { increment: 1 } } });
 }
 
 export interface ManualArticlePatch {

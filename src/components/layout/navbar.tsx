@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, ChevronDown, Menu, Newspaper, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import { Bookmark, ChevronDown, Newspaper, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
 import { CATEGORIES } from "@/data/categories";
 import { SearchBar } from "@/components/search/search-bar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";

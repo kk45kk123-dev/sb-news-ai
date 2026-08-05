@@ -41,7 +41,10 @@ export default function NewsDetailPage() {
   React.useEffect(() => {
     if (!id || viewedRef.current === id) return;
     viewedRef.current = id;
-    incrementView(id);
+    incrementView(id).catch(() => {
+      // Best-effort — a failed view-count bump (e.g. the article was deleted
+      // between page load and this call) shouldn't surface to the reader.
+    });
     addRecentlyViewed(id);
   }, [id, addRecentlyViewed]);
 

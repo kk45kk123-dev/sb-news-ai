@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, LogOut, Menu } from "lucide-react";
+import { ExternalLink, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/context/admin-auth-context";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
