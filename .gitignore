@@ -26,3 +26,6 @@ coverage/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local redis-server dump (this container runs redis-server directly for dev/testing)
+dump.rdb
