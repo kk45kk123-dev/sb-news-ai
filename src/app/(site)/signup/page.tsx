@@ -27,8 +27,8 @@ export default function SignupPage() {
       const user = await signup(values);
       toast.success(`${user.name}님, 가입을 환영합니다.`);
       router.push("/");
-    } catch {
-      toast.error("회원가입에 실패했습니다. 다시 시도해주세요.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "회원가입에 실패했습니다. 다시 시도해주세요.");
     }
   }
 
@@ -56,7 +56,7 @@ export default function SignupPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">비밀번호</Label>
-              <Input id="password" type="password" placeholder="8자 이상" {...register("password")} />
+              <Input id="password" type="password" placeholder="12자 이상" {...register("password")} />
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
             <div className="space-y-1.5">

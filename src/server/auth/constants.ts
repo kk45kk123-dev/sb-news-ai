@@ -7,3 +7,4 @@ export const SESSION_REDIS_PREFIX = "session:";
 export const BCRYPT_COST_FACTOR = 12; // §16.1: bcrypt cost 12+
 export const MIN_PASSWORD_LENGTH = 12; // §16.1: 최소 12자 정책
 export const LOGIN_RATE_LIMIT_PER_MINUTE = 5; // §16.3
+export const SIGNUP_RATE_LIMIT_PER_MINUTE = 5; // same order as login — prevents account-creation spam

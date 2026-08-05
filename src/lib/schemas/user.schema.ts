@@ -14,11 +14,13 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+// 12자 정책은 src/server/auth/constants.ts의 MIN_PASSWORD_LENGTH와 반드시 일치해야 한다 —
+// 서버 상수는 클라이언트 번들에 들어가면 안 되는 경로(src/server/**)라 값만 복제해서 쓴다.
 export const signupSchema = z
   .object({
     name: z.string().min(2, { message: "이름은 2자 이상 입력해주세요." }),
     email: z.string().email({ message: "올바른 이메일 형식이 아닙니다." }),
-    password: z.string().min(8, { message: "비밀번호는 8자 이상이어야 합니다." }),
+    password: z.string().min(12, { message: "비밀번호는 12자 이상이어야 합니다." }),
     passwordConfirm: z.string(),
   })
   .refine((data) => data.password === data.passwordConfirm, {

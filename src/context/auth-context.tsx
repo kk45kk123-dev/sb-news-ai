@@ -5,8 +5,6 @@ import type { LoginInput, SignupInput, User } from "@/lib/schemas/user.schema";
 import { apiFetch } from "@/lib/api/http";
 import { getCsrfToken } from "@/lib/csrf-client";
 
-const SIGNUP_STORAGE_KEY = "sb-news-user"; // still mock — see signup() below
-
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
@@ -17,23 +15,23 @@ interface AuthContextValue {
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 interface MeResponse {
   id: string;
   name: string;
   email: string;
 }
 
+interface AuthApiResponse {
+  success: boolean;
+  data?: { user: { id: string; name: string; email: string } };
+  error?: { message: string };
+}
+
 /**
- * login()/logout() are backed by the real session/CSRF system at /api/v1/auth/*
- * (the same one admin login uses) — reader accounts are the pre-seeded demo
- * accounts (scripts/seed-admin-users.ts) until a real self-registration API
- * exists. signup() is intentionally still a local-only mock: it has no real
- * backend endpoint to call, and adding one is out of scope for this pass
- * (see Sprint 2 report — "회원가입" was not one of the 10 required items).
+ * login()/signup()/logout() are all backed by the real session/CSRF system at
+ * /api/v1/auth/* (the same one admin login uses — Sprint 1 wired login,
+ * Sprint 3 added signup). No local fallback state anymore; a logged-out
+ * visitor is just user=null.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
@@ -42,14 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     apiFetch<MeResponse>("/api/v1/auth/me")
       .then((me) => setUser({ ...me, createdAt: new Date().toISOString() }))
-      .catch(() => {
-        try {
-          const raw = window.localStorage.getItem(SIGNUP_STORAGE_KEY);
-          if (raw) setUser(JSON.parse(raw));
-        } catch {
-          // ignore malformed storage
-        }
-      })
+      .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -59,31 +50,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     });
-    const body = await res.json().catch(() => null);
-    if (!res.ok || !body?.success) {
+    const body: AuthApiResponse | null = await res.json().catch(() => null);
+    if (!res.ok || !body?.success || !body.data) {
       throw new Error(body?.error?.message ?? "로그인에 실패했습니다.");
     }
     const real: User = { ...body.data.user, createdAt: new Date().toISOString() };
-    window.localStorage.removeItem(SIGNUP_STORAGE_KEY); // real session now takes priority
     setUser(real);
     return real;
   }, []);
 
   const signup = React.useCallback(async (input: SignupInput) => {
-    await delay(700);
-    const fake: User = {
-      id: `u-${input.email}`,
-      name: input.name,
-      email: input.email,
-      createdAt: new Date().toISOString(),
-    };
-    window.localStorage.setItem(SIGNUP_STORAGE_KEY, JSON.stringify(fake));
-    setUser(fake);
-    return fake;
+    const res = await fetch("/api/v1/auth/signup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const body: AuthApiResponse | null = await res.json().catch(() => null);
+    if (!res.ok || !body?.success || !body.data) {
+      throw new Error(body?.error?.message ?? "회원가입에 실패했습니다.");
+    }
+    const real: User = { ...body.data.user, createdAt: new Date().toISOString() };
+    setUser(real);
+    return real;
   }, []);
 
   const logout = React.useCallback(() => {
-    window.localStorage.removeItem(SIGNUP_STORAGE_KEY);
     fetch("/api/v1/auth/logout", {
       method: "POST",
       headers: { "x-csrf-token": getCsrfToken() ?? "" },
