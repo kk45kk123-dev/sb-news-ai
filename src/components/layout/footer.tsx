@@ -36,9 +36,6 @@ export function Footer() {
               <Link href="/news?sort=views" className="transition-colors hover:text-foreground">인기뉴스</Link>
             </li>
             <li>
-              <Link href="/news?ai=1" className="transition-colors hover:text-foreground">AI 추천</Link>
-            </li>
-            <li>
               <Link href="/admin/login" className="transition-colors hover:text-foreground">관리자 로그인</Link>
             </li>
           </ul>

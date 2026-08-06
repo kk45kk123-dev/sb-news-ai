@@ -39,11 +39,6 @@ export function MobileNav() {
             </Link>
           </SheetClose>
           <SheetClose asChild>
-            <Link href="/news?ai=1" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted">
-              <Sparkles className="h-4 w-4 text-muted-foreground" /> AI 추천
-            </Link>
-          </SheetClose>
-          <SheetClose asChild>
             <Link href="/bookmarks" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted">
               <Bookmark className="h-4 w-4 text-muted-foreground" /> 북마크
             </Link>

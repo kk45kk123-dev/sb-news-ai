@@ -52,11 +52,6 @@ export function Navbar() {
               <TrendingUp className="h-4 w-4" /> 인기뉴스
             </Link>
           </Button>
-          <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-            <Link href="/news?ai=1">
-              <Sparkles className="h-4 w-4" /> AI 추천
-            </Link>
-          </Button>
         </nav>
 
         <div className="hidden flex-1 md:block md:max-w-xs lg:max-w-sm">
