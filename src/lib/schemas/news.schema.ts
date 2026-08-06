@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-export const sentimentSchema = z.enum(["positive", "neutral", "negative"]);
-export type Sentiment = z.infer<typeof sentimentSchema>;
-
 export const confidenceSchema = z.enum(["high", "medium", "low"]);
 export type Confidence = z.infer<typeof confidenceSchema>;
 
@@ -42,7 +39,6 @@ export const newsSchema = z.object({
   aiImportance: z.number().int().min(1).max(5),
   financialImpact: z.number().int().min(1).max(5),
   savingsBankImpact: z.number().int().min(1).max(5),
-  sentiment: sentimentSchema,
   aiConfidence: confidenceSchema,
   isAiRecommended: z.boolean().default(false),
   status: newsStatusSchema.default("published"),

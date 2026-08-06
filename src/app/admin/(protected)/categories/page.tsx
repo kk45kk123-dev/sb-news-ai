@@ -12,12 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAdminAuth } from "@/context/admin-auth-context";
 
 export default function AdminCategoriesPage() {
   const { data: counts, isLoading } = useCategoryCountsQuery();
-  const { hasRole } = useAdminAuth();
-  const canEdit = hasRole(["admin", "editor"]);
   const [editing, setEditing] = React.useState<string | null>(null);
   const [nameDraft, setNameDraft] = React.useState("");
 
@@ -46,7 +43,7 @@ export default function AdminCategoriesPage() {
                 <TableHead>카테고리</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>게시된 기사 수</TableHead>
-                {canEdit && <TableHead className="text-right">작업</TableHead>}
+                <TableHead className="text-right">작업</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -62,13 +59,11 @@ export default function AdminCategoriesPage() {
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{c.slug}</TableCell>
                     <TableCell className="tabular-nums">{isLoading ? <Skeleton className="h-4 w-8" /> : `${count ?? 0}건`}</TableCell>
-                    {canEdit && (
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(c.id, c.name)}>
-                          <Pencil className="h-3.5 w-3.5" /> 이름 변경
-                        </Button>
-                      </TableCell>
-                    )}
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(c.id, c.name)}>
+                        <Pencil className="h-3.5 w-3.5" /> 이름 변경
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}

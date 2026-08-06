@@ -8,7 +8,6 @@ import { CATEGORIES } from "@/data/categories";
 import { getMediaById } from "@/data/media";
 import { formatCount, relativeTime } from "@/lib/format";
 import { useAdminNewsListQuery, useDeleteNewsMutation, useUpdateNewsMutation } from "@/lib/query/use-admin";
-import { useAdminAuth } from "@/context/admin-auth-context";
 import { CategoryBadge } from "@/components/news/category-badge";
 import { Pagination } from "@/components/admin/pagination";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,9 +48,6 @@ const STATUS_VARIANT: Record<NewsStatus, "success" | "warning" | "muted"> = {
 };
 
 export default function AdminNewsListPage() {
-  const { hasRole } = useAdminAuth();
-  const canEdit = hasRole(["admin", "editor"]);
-
   const [page, setPage] = React.useState(1);
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<string>("all");
@@ -115,11 +111,9 @@ export default function AdminNewsListPage() {
           <h1 className="text-page-title">뉴스 관리</h1>
           <p className="mt-1 text-sm text-muted-foreground">등록된 전체 기사를 관리합니다. (총 {data?.total ?? 0}건)</p>
         </div>
-        {canEdit && (
-          <Button asChild>
-            <Link href="/admin/news/new">기사 등록</Link>
-          </Button>
-        )}
+        <Button asChild>
+          <Link href="/admin/news/new">기사 등록</Link>
+        </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -188,7 +182,7 @@ export default function AdminNewsListPage() {
                   <TableHead>상태</TableHead>
                   <TableHead>조회수</TableHead>
                   <TableHead>등록일</TableHead>
-                  {canEdit && <TableHead className="text-right">작업</TableHead>}
+                  <TableHead className="text-right">작업</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -215,46 +209,44 @@ export default function AdminNewsListPage() {
                       </TableCell>
                       <TableCell className="tabular-nums text-sm">{formatCount(n.viewCount)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{relativeTime(n.publishedAt)}</TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button asChild variant="ghost" size="icon">
-                              <Link href={`/admin/news/${n.id}/edit`}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Link>
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {n.status !== "published" && (
-                                  <DropdownMenuItem onClick={() => publishNow(n.id, n.title)}>즉시 게시</DropdownMenuItem>
-                                )}
-                                {n.status !== "draft" && (
-                                  <DropdownMenuItem onClick={() => unpublishToDraft(n.id, n.title)}>임시저장으로 전환</DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setScheduleTarget({ id: n.id, title: n.title });
-                                    setScheduleDate(n.scheduledAt ? n.scheduledAt.slice(0, 10) : "");
-                                  }}
-                                >
-                                  <CalendarClock className="h-3.5 w-3.5" /> 예약 게시 설정
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => setDeleteTarget({ id: n.id, title: n.title })}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" /> 삭제
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      )}
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button asChild variant="ghost" size="icon">
+                            <Link href={`/admin/news/${n.id}/edit`}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {n.status !== "published" && (
+                                <DropdownMenuItem onClick={() => publishNow(n.id, n.title)}>즉시 게시</DropdownMenuItem>
+                              )}
+                              {n.status !== "draft" && (
+                                <DropdownMenuItem onClick={() => unpublishToDraft(n.id, n.title)}>임시저장으로 전환</DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setScheduleTarget({ id: n.id, title: n.title });
+                                  setScheduleDate(n.scheduledAt ? n.scheduledAt.slice(0, 10) : "");
+                                }}
+                              >
+                                <CalendarClock className="h-3.5 w-3.5" /> 예약 게시 설정
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteTarget({ id: n.id, title: n.title })}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> 삭제
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}

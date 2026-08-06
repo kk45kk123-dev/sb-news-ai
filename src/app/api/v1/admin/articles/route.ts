@@ -27,7 +27,7 @@ const publishRequestSchema = z.object({
 export async function POST(req: NextRequest) {
   const ctx = await getAuthContext(req);
   if (!ctx) return apiError(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.", 401);
-  if (!hasRole(ctx.user.role, ["admin", "editor"])) {
+  if (!hasRole(ctx.user.role, ["admin"])) {
     return apiError(ErrorCode.FORBIDDEN, "기사 게시 권한이 없습니다.", 403);
   }
   if (!verifyCsrf(req, ctx)) {

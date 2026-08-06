@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   if (!ctx) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
-  if (!hasRole(ctx.user.role, ["admin", "editor"])) {
+  if (!hasRole(ctx.user.role, ["admin"])) {
     return NextResponse.json({ error: "기사 등록 권한이 없습니다." }, { status: 403 });
   }
   if (!verifyCsrf(req, ctx)) {

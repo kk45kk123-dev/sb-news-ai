@@ -12,10 +12,13 @@ export default function AdminProtectedLayout({ children }: { children: React.Rea
   const router = useRouter();
 
   React.useEffect(() => {
-    if (!isLoading && !admin) router.replace("/admin/login");
+    if (isLoading) return;
+    // 일반 회원(viewer) 계정도 같은 로그인 백엔드를 쓰므로, 세션이 있다는 것만으로
+    // 관리 콘솔 접근을 허용하면 안 된다 — role이 admin이 아니면 그대로 튕겨낸다.
+    if (!admin || admin.role !== "admin") router.replace("/admin/login");
   }, [isLoading, admin, router]);
 
-  if (isLoading || !admin) {
+  if (isLoading || !admin || admin.role !== "admin") {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

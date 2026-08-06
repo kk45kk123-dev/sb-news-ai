@@ -15,8 +15,6 @@ const DEMO_PASSWORD = "demo1234";
 
 const DEMO_ADMINS: { email: string; name: string; role: UserRole }[] = [
   { email: "admin@sbfederation.or.kr", name: "김관리", role: "admin" },
-  { email: "editor@sbfederation.or.kr", name: "박편집", role: "editor" },
-  { email: "viewer@sbfederation.or.kr", name: "이열람", role: "viewer" },
 ];
 
 async function main() {

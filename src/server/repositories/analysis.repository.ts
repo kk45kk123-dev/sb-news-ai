@@ -31,7 +31,6 @@ export async function persistAnalysis(input: PersistAnalysisInput): Promise<void
         keywords: input.output.keywords,
         importance: input.output.importance,
         sbImpactScore: input.output.sb_impact_score,
-        sbImpactDirection: input.output.sb_impact_direction,
         sbImpactReason: input.output.sb_impact_reason,
         customerImpact: input.output.customer_impact,
         digitalImpact: input.output.digital_impact,

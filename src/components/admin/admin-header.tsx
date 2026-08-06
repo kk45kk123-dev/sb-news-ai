@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 
-const ROLE_LABEL: Record<string, string> = { admin: "관리자", editor: "편집자", viewer: "열람자" };
+const ROLE_LABEL: Record<string, string> = { admin: "관리자", viewer: "일반회원" };
 
 export function AdminHeader() {
   const { admin, logout } = useAdminAuth();

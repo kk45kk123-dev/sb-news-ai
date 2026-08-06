@@ -12,7 +12,6 @@ import { annotate } from "@/lib/annotate";
 import { NewsThumbnail } from "@/components/news/news-thumbnail";
 import { CategoryBadge } from "@/components/news/category-badge";
 import { AiImportance } from "@/components/news/ai-importance";
-import { SentimentBadge } from "@/components/news/sentiment-badge";
 import { ConfidenceBadge } from "@/components/news/confidence-badge";
 import { ImpactMeter } from "@/components/news/impact-meter";
 import { ArticleBody } from "@/components/news/article-body";
@@ -178,7 +177,6 @@ export default function NewsDetailPage() {
                 <ImpactMeter label="금융 영향도" score={news.financialImpact} />
                 <ImpactMeter label="저축은행 영향도" score={news.savingsBankImpact} />
                 <div className="flex items-center gap-2 pt-1">
-                  <SentimentBadge sentiment={news.sentiment} />
                   <ConfidenceBadge confidence={news.aiConfidence} />
                 </div>
               </div>

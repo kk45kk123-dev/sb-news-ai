@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-const ROLE_LABEL: Record<string, string> = { admin: "관리자", editor: "편집자", viewer: "열람자" };
+const ROLE_LABEL: Record<string, string> = { admin: "관리자", viewer: "일반회원" };
 
 export default function AdminLoginPage() {
   const router = useRouter();

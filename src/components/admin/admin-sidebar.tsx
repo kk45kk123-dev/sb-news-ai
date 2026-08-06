@@ -4,12 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAdminAuth } from "@/context/admin-auth-context";
 import { ADMIN_NAV_ITEMS } from "@/components/admin/admin-nav-items";
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const { hasRole } = useAdminAuth();
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card lg:flex">
@@ -21,7 +19,6 @@ export function AdminSidebar() {
       </div>
       <nav className="flex-1 space-y-0.5 p-3">
         {ADMIN_NAV_ITEMS.map((item) => {
-          if (item.roles && !hasRole(item.roles)) return null;
           const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
           const Icon = item.icon;
           return (

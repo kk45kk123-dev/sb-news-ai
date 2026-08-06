@@ -42,7 +42,6 @@ const validOutput = {
   keywords: ["k1", "k2", "k3"],
   importance: 3,
   sb_impact_score: 4,
-  sb_impact_direction: "negative",
   sb_impact_reason: "이유",
   risks: [],
   action_ideas: [],

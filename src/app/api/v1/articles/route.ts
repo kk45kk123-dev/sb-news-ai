@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     return apiError(ErrorCode.VALIDATION_ERROR, parsed.error.issues[0]?.message ?? "잘못된 요청입니다.", 400);
   }
 
-  const canSeeAllStatuses = !!ctx && hasRole(ctx.user.role, ["admin", "editor"]);
+  const canSeeAllStatuses = !!ctx && hasRole(ctx.user.role, ["admin"]);
   const result = await listPublicNews(ctx?.user.orgId ?? DEFAULT_ORG_ID, {
     ...parsed.data,
     includeAllStatuses: canSeeAllStatuses ? parsed.data.includeAllStatuses : false,

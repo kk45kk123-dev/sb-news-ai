@@ -6,8 +6,6 @@ import { getCsrfToken } from "@/lib/csrf-client";
 
 export const DEMO_ADMINS: Record<string, { name: string; role: AdminRole }> = {
   "admin@sbfederation.or.kr": { name: "김관리", role: "admin" },
-  "editor@sbfederation.or.kr": { name: "박편집", role: "editor" },
-  "viewer@sbfederation.or.kr": { name: "이열람", role: "viewer" },
 };
 
 interface AdminAuthContextValue {
@@ -15,7 +13,6 @@ interface AdminAuthContextValue {
   isLoading: boolean;
   login: (input: AdminLoginInput) => Promise<Admin>;
   logout: () => void;
-  hasRole: (roles: AdminRole[]) => boolean;
 }
 
 const AdminAuthContext = React.createContext<AdminAuthContextValue | null>(null);
@@ -82,9 +79,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     }).finally(() => setAdmin(null));
   }, []);
 
-  const hasRole = React.useCallback((roles: AdminRole[]) => !!admin && roles.includes(admin.role), [admin]);
-
-  const value = React.useMemo(() => ({ admin, isLoading, login, logout, hasRole }), [admin, isLoading, login, logout, hasRole]);
+  const value = React.useMemo(() => ({ admin, isLoading, login, logout }), [admin, isLoading, login, logout]);
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
 }

@@ -80,7 +80,7 @@ export async function login(ctx: LoginRequestContext): Promise<LoginResult> {
 
 /**
  * 회원가입 — 이메일 중복 시 DuplicateEmailError, 성공 시 즉시 세션을 발급한다
- * (자동 로그인). role은 항상 viewer로 고정 — 관리자/편집자 권한은 셀프 서비스로
+ * (자동 로그인). role은 항상 viewer로 고정 — 관리자 권한은 셀프 서비스로
  * 부여할 수 없다 (관리자 계정은 scripts/seed-admin-users.ts 또는 향후 관리자
  * 승격 기능으로만 생성).
  */

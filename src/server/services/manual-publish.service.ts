@@ -152,7 +152,6 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
           keywords: input.keywords,
           importance: 3,
           sbImpactScore: 3,
-          sbImpactDirection: "neutral",
           sbImpactReason: "관리자 수동 등록 — 세부 영향도 분석은 실행되지 않았습니다.",
           risks: [],
           actionIdeas: [],

@@ -13,16 +13,15 @@ interface OrgUser {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "editor" | "viewer";
+  role: "admin" | "viewer";
   joinedAt: string;
   lastActiveAt: string | null;
   status: "active" | "suspended";
 }
 
-const ROLE_LABEL: Record<string, string> = { admin: "관리자", editor: "편집자", viewer: "열람자" };
+const ROLE_LABEL: Record<string, string> = { admin: "관리자", viewer: "일반회원" };
 const ROLE_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   admin: "default",
-  editor: "secondary",
   viewer: "outline",
 };
 

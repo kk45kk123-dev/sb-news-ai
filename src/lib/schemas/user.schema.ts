@@ -29,7 +29,7 @@ export const signupSchema = z
   });
 export type SignupInput = z.infer<typeof signupSchema>;
 
-export const adminRoleSchema = z.enum(["admin", "editor", "viewer"]);
+export const adminRoleSchema = z.enum(["admin", "viewer"]);
 export type AdminRole = z.infer<typeof adminRoleSchema>;
 
 export const adminSchema = z.object({

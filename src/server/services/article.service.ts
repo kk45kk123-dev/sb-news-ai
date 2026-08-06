@@ -9,7 +9,7 @@ import {
   type ArticleWithRelations,
 } from "@/server/repositories/article.repository";
 import { getCategoryGradient } from "@/data/categories";
-import { newsSchema, type News, type Sentiment } from "@/lib/schemas/news.schema";
+import { newsSchema, type News } from "@/lib/schemas/news.schema";
 
 // NOTE: this file used to also define a separate ArticleDto/listArticlesForOrg/
 // getArticleDetail vertical for the automated-collector-pipeline's own detail
@@ -19,11 +19,6 @@ import { newsSchema, type News, type Sentiment } from "@/lib/schemas/news.schema
 // removed rather than left to bit-rot alongside a differently-typed sort enum.
 // listArticles()/findArticleWithRelations() (still below, in article.repository.ts)
 // remain shared by both the dormant pipeline and this public-facing path.
-
-function mapSentiment(direction: string | undefined): Sentiment {
-  if (direction === "positive" || direction === "negative") return direction;
-  return "neutral"; // "mixed" (real-only value) and missing analysis both fall back to neutral
-}
 
 /**
  * Reshapes a real Article+Analysis row into the site's mock News contract
@@ -58,7 +53,6 @@ export function toNewsDto(article: ArticleWithRelations): News {
     aiImportance: analysis?.importance ?? 3,
     financialImpact: analysis?.sbImpactScore ?? 3,
     savingsBankImpact: analysis?.sbImpactScore ?? 3,
-    sentiment: mapSentiment(analysis?.sbImpactDirection),
     aiConfidence: analysis?.confidence ?? "low",
     isAiRecommended: (analysis?.importance ?? 0) >= 4,
     status: article.status,

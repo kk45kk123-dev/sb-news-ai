@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAdminAuth } from "@/context/admin-auth-context";
 import { ADMIN_NAV_ITEMS } from "@/components/admin/admin-nav-items";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -13,7 +12,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose 
 export function AdminMobileNav() {
   const [open, setOpen] = React.useState(false);
   const pathname = usePathname();
-  const { hasRole } = useAdminAuth();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -33,7 +31,6 @@ export function AdminMobileNav() {
         </SheetHeader>
         <nav className="mt-4 space-y-0.5">
           {ADMIN_NAV_ITEMS.map((item) => {
-            if (item.roles && !hasRole(item.roles)) return null;
             const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
