@@ -1,6 +1,6 @@
 # DB_SCHEMA.md — 데이터베이스 스키마
 
-PostgreSQL 15+, 확장: `pgcrypto`(UUID), `pgvector`(임베딩), `pg_bigm`(한국어 부분일치 검색, ADR-002).
+PostgreSQL 15+, 확장: `pgcrypto`(UUID), `pgvector`(임베딩), `pg_trgm`(한국어 부분일치 검색, ADR-002 — 관리형 Postgres(Neon)가 `pg_bigm`을 지원하지 않아 2026-08에 교체).
 ORM: Prisma — 아래 DDL은 논리 설계 확정용이며 실제 마이그레이션은 Prisma schema로 변환해 관리한다.
 
 멀티테넌시 대비(§17.1): 향후 회원 저축은행사 확대를 대비해 핵심 테이블에 `org_id`를 미리 넣는다.
@@ -10,7 +10,7 @@ Phase 1에서는 시드 1행만 존재하는 최소 형태로 둔다.
 ```sql
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pg_bigm;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE organizations (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -125,9 +125,9 @@ CREATE INDEX idx_articles_pipeline_stage ON articles (pipeline_stage)
 CREATE INDEX idx_articles_purge_due      ON articles (published_at)
   WHERE raw_content IS NOT NULL;
 
--- 한국어 부분일치 검색 (pg_bigm)
-CREATE INDEX idx_articles_title_bigm ON articles USING gin (title gin_bigm_ops);
-CREATE INDEX idx_articles_desc_bigm  ON articles USING gin (description gin_bigm_ops);
+-- 한국어 부분일치 검색 (pg_trgm)
+CREATE INDEX idx_articles_title_bigm ON articles USING gin (title gin_trgm_ops);
+CREATE INDEX idx_articles_desc_bigm  ON articles USING gin (description gin_trgm_ops);
 ```
 - `url_hash UNIQUE`: F-01 수용 기준 "URL 정규화 후 해시로 중복 방지"를 DB 제약으로 강제 — 애플리케이션 버그로도 중복이 생기지 않도록.
 - `idx_articles_pipeline_stage`: 부분 인덱스로 "아직 처리 중인" 기사만 인덱싱 — 파이프라인 잡이 "다음 처리할 기사"를 조회할 때 사용. 완료/실패 기사는 스캔 대상에서 제외해 인덱스 크기를 억제한다.
@@ -444,4 +444,4 @@ CREATE TABLE golden_set (
 
 - 모든 목록 조회는 `published_at`/`created_at` 기준 정렬 + 범위 필터를 강제 → 파티셔닝 전환(§17.1) 시 쿼리 재작성 최소화.
 - "현재 유효한 행만" 조회하는 패턴(활성 분석, 활성 프롬프트, 활성 출처)은 부분 인덱스(`WHERE is_current/is_active`)로 인덱스 크기를 억제.
-- 검색은 `pg_bigm` GIN 인덱스(제목/설명), 벡터 검색은 `pgvector` HNSW 인덱스로 분리 — F-07의 하이브리드 검색(BM25 유사 키워드 + 벡터, RRF 결합)이 두 인덱스를 병렬 조회 후 애플리케이션 레벨에서 결합한다.
+- 검색은 `pg_trgm` GIN 인덱스(제목/설명), 벡터 검색은 `pgvector` HNSW 인덱스로 분리 — F-07의 하이브리드 검색(BM25 유사 키워드 + 벡터, RRF 결합)이 두 인덱스를 병렬 조회 후 애플리케이션 레벨에서 결합한다.

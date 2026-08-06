@@ -2,7 +2,9 @@
 CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateExtension
-CREATE EXTENSION IF NOT EXISTS "pg_bigm";
+-- pg_bigm(ADR-002 원안)은 Neon 등 관리형 Postgres에서 지원되지 않아 pg_trgm으로 대체한다
+-- (커스텀 이미지를 직접 빌드할 수 있는 자체 호스팅 전제가 무너졌다 — docs/DECISIONS.md 참고).
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- CreateExtension
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -591,9 +593,9 @@ CREATE UNIQUE INDEX "uq_analyses_current" ON "analyses"("article_id") WHERE "is_
 -- Partial unique index: task_type당 활성 프롬프트 버전은 1개뿐
 CREATE UNIQUE INDEX "uq_prompt_versions_active" ON "prompt_versions"("prompt_id") WHERE "is_active" = true;
 
--- 한국어 부분일치 검색 (pg_bigm, ADR-002)
-CREATE INDEX "idx_articles_title_bigm" ON "articles" USING gin ("title" gin_bigm_ops);
-CREATE INDEX "idx_articles_desc_bigm" ON "articles" USING gin ("description" gin_bigm_ops);
+-- 한국어 부분일치 검색 (pg_trgm — Neon 등 관리형 Postgres 호환, ADR-002 갱신)
+CREATE INDEX "idx_articles_title_bigm" ON "articles" USING gin ("title" gin_trgm_ops);
+CREATE INDEX "idx_articles_desc_bigm" ON "articles" USING gin ("description" gin_trgm_ops);
 
 -- 벡터 유사도 검색 (pgvector, ADR-003) — 삽입이 잦은 워크로드에 적합한 HNSW 채택
 CREATE INDEX "idx_article_embeddings_vec" ON "article_embeddings" USING hnsw ("embedding" vector_cosine_ops);
