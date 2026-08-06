@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { useNewsListQuery, useAiRecommendedNewsQuery } from "@/lib/query/use-news";
+import { useNewsListQuery } from "@/lib/query/use-news";
 import { CATEGORIES } from "@/data/categories";
 import { FeaturedArticle } from "@/components/home/featured-article";
-import { AiPicksPanel } from "@/components/home/ai-picks-panel";
 import { MarketBriefing } from "@/components/home/market-briefing";
 import { EconomicCalendar } from "@/components/home/economic-calendar";
 import { NewsGrid } from "@/components/news/news-grid";
@@ -13,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HomePage() {
   const { data: featuredData, isLoading: featuredLoading } = useNewsListQuery({ sort: "impact", pageSize: 1 });
-  const { data: aiPicks, isLoading: aiLoading } = useAiRecommendedNewsQuery();
   const { data: latestData, isLoading: latestLoading } = useNewsListQuery({ sort: "latest", pageSize: 6 });
 
   const featured = featuredData?.items[0];
@@ -21,16 +19,11 @@ export default function HomePage() {
   return (
     <div className="container space-y-10 py-8">
       <section>
-        <div className="grid gap-5 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            {featuredLoading || !featured ? (
-              <Skeleton className="aspect-[16/9] w-full rounded-2xl sm:aspect-[2/1]" />
-            ) : (
-              <FeaturedArticle item={featured} />
-            )}
-          </div>
-          <AiPicksPanel items={aiPicks} isLoading={aiLoading} />
-        </div>
+        {featuredLoading || !featured ? (
+          <Skeleton className="aspect-[16/9] w-full rounded-2xl sm:aspect-[2/1]" />
+        ) : (
+          <FeaturedArticle item={featured} />
+        )}
 
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <MarketBriefing />
