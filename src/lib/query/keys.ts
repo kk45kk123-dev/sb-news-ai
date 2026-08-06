@@ -21,4 +21,7 @@ export const queryKeys = {
     newsList: (params: Partial<NewsListParams>) => ["admin", "news", "list", params] as const,
     dashboard: () => ["admin", "dashboard"] as const,
   },
+  market: {
+    snapshot: () => ["market", "snapshot"] as const,
+  },
 };
