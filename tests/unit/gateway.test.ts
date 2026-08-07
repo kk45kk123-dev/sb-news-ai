@@ -47,6 +47,7 @@ const validOutput = {
   action_ideas: [],
   categories: ["정책"],
   evidence: [],
+  glossary: [{ term: "DSR", definition: "총부채원리금상환비율." }],
   confidence: "high",
 };
 
@@ -83,6 +84,7 @@ describe("analyzeArticle", () => {
     const result = await analyzeArticle(baseInput);
 
     expect(result.output.sb_impact_score).toBe(4);
+    expect(result.output.glossary).toEqual([{ term: "DSR", definition: "총부채원리금상환비율." }]);
     expect(mockCallAnthropic).toHaveBeenCalledTimes(1);
     expect(mockRecordAiCallLog).toHaveBeenCalledTimes(1);
     expect(mockRecordAiCallLog).toHaveBeenCalledWith(expect.objectContaining({ status: "success" }));

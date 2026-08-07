@@ -21,6 +21,12 @@ export const mediaSchema = z.object({
 });
 export type Media = z.infer<typeof mediaSchema>;
 
+export const glossaryTermSchema = z.object({
+  term: z.string(),
+  definition: z.string(),
+});
+export type GlossaryTerm = z.infer<typeof glossaryTermSchema>;
+
 export const newsSchema = z.object({
   id: z.string(),
   slug: z.string(),
@@ -40,6 +46,7 @@ export const newsSchema = z.object({
   financialImpact: z.number().int().min(1).max(5),
   savingsBankImpact: z.number().int().min(1).max(5),
   aiConfidence: confidenceSchema,
+  glossary: z.array(glossaryTermSchema).default([]),
   isAiRecommended: z.boolean().default(false),
   status: newsStatusSchema.default("published"),
   scheduledAt: z.string().nullable().default(null),

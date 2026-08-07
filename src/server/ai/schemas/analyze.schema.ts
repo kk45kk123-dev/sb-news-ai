@@ -14,6 +14,10 @@ export const analyzeOutputSchema = z.object({
   ai_comment: z.string().optional(),
   categories: z.array(z.string()).min(1).max(3),
   evidence: z.array(z.string().max(40)).max(2).default([]),
+  glossary: z
+    .array(z.object({ term: z.string().max(20), definition: z.string().max(120) }))
+    .max(8)
+    .default([]),
   confidence: z.enum(["high", "medium", "low"]),
 });
 
@@ -48,6 +52,15 @@ export const analyzeOutputJsonSchema = {
     ai_comment: { type: "string" },
     categories: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 3 },
     evidence: { type: "array", items: { type: "string" }, maxItems: 2 },
+    glossary: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["term", "definition"],
+        properties: { term: { type: "string" }, definition: { type: "string" } },
+      },
+      maxItems: 8,
+    },
     confidence: { enum: ["high", "medium", "low"] },
   },
 } as const;

@@ -54,6 +54,7 @@ export function toNewsDto(article: ArticleWithRelations): News {
     financialImpact: analysis?.sbImpactScore ?? 3,
     savingsBankImpact: analysis?.sbImpactScore ?? 3,
     aiConfidence: analysis?.confidence ?? "low",
+    glossary: analysis?.glossary ?? [],
     isAiRecommended: (analysis?.importance ?? 0) >= 4,
     status: article.status,
     scheduledAt: article.scheduledAt?.toISOString() ?? null,

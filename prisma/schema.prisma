@@ -284,6 +284,7 @@ model Analysis {
   actionIdeas         String[]          @default([]) @map("action_ideas")
   aiComment           String?           @map("ai_comment")
   evidence            Json              @default("[]")
+  glossary            Json              @default("[]")
   confidence          ConfidenceLevel
   promptVersionId     String            @map("prompt_version_id") @db.Uuid
   modelId             String            @map("model_id") @db.Uuid

@@ -94,6 +94,9 @@ export default function NewsDetailPage() {
   }
 
   const media = getMediaById(news.mediaId);
+  const glossaryTerms = news.glossary.length
+    ? Object.fromEntries(news.glossary.map((g) => [g.term, g.definition]))
+    : undefined;
 
   return (
     <div className="container max-w-3xl space-y-8 py-8">
@@ -152,7 +155,7 @@ export default function NewsDetailPage() {
             {news.summaryBullets.map((line, i) => (
               <li key={i} className="flex gap-2 text-[15px] leading-relaxed text-foreground">
                 <span className="text-primary">·</span>
-                <span>{annotate(line)}</span>
+                <span>{annotate(line, glossaryTerms)}</span>
               </li>
             ))}
           </ul>
@@ -185,7 +188,7 @@ export default function NewsDetailPage() {
         </section>
 
         <article>
-          <ArticleBody text={news.body} />
+          <ArticleBody text={news.body} glossary={news.glossary} />
         </article>
 
         <div className="flex flex-wrap gap-2">

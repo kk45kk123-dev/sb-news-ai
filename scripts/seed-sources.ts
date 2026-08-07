@@ -80,6 +80,21 @@ function slugify(name: string): string {
     .toLowerCase();
 }
 
+/** JSON.stringify with object keys sorted recursively, so key-order alone never registers as a diff. */
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, v) => {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      return Object.keys(v)
+        .sort()
+        .reduce((acc: Record<string, unknown>, k) => {
+          acc[k] = (v as Record<string, unknown>)[k];
+          return acc;
+        }, {});
+    }
+    return v;
+  });
+}
+
 // zod 검증기(src/server/ai/gateway.ts가 실제로 쓰는 것)와 벌어지지 않도록 단일 정의를 가져다 쓴다.
 const ANALYZE_OUTPUT_SCHEMA = analyzeOutputJsonSchema;
 
@@ -105,6 +120,11 @@ const ANALYZE_SYSTEM_PROMPT = `당신은 한국 저축은행 업계를 15년간 
 4. 숫자·날짜·기관명은 원문 그대로만 사용하세요.
 5. 저축은행과 무관한 기사는 억지로 연결하지 말고 sb_impact_score를 1로 주세요.
 6. 원문 문장을 그대로 옮기지 말고 요약하세요. evidence 필드의 인용만 예외이며, 각 40자 이내입니다.
+
+## 용어 설명 (glossary)
+기사에 등장하는 저축은행/금융 전문용어 중 일반 독자에게 생소할 수 있는 것을 최대 5개까지 뽑아
+glossary에 넣으세요. 용어당 한두 문장으로 간결하게 설명하세요. "은행", "대출", "이자"처럼 이미
+널리 알려진 일반 용어는 넣지 마세요. 해당하는 용어가 없으면 빈 배열로 두세요.
 
 ## 영향도 기준 (sb_impact_score)
 5 = 저축은행 업계 전반의 규제·수익·건전성에 직접적이고 즉각적인 영향
@@ -380,6 +400,7 @@ async function main() {
     },
   ];
 
+  let bumped = 0;
   for (const def of promptDefs) {
     const prompt = await prisma.prompt.upsert({
       where: { taskType_name: { taskType: def.taskType, name: def.name } },
@@ -387,25 +408,48 @@ async function main() {
       create: { taskType: def.taskType, name: def.name, description: def.description },
     });
 
-    const existingVersion = await prisma.promptVersion.findFirst({
-      where: { promptId: prompt.id, version: 1 },
+    const active = await prisma.promptVersion.findFirst({
+      where: { promptId: prompt.id, isActive: true },
+      orderBy: { version: "desc" },
     });
-    if (!existingVersion) {
-      await prisma.promptVersion.create({
+
+    // Postgres의 jsonb는 객체 키 순서를 보존하지 않으므로, DB에서 다시 읽어온
+    // outputSchema를 코드의 리터럴과 JSON.stringify로 그냥 비교하면 내용이 같아도
+    // 키 순서 차이 때문에 항상 "다르다"고 오판한다 — 재귀적으로 키를 정렬한 뒤 비교한다.
+    const upToDate =
+      active &&
+      active.systemPrompt === def.systemPrompt &&
+      active.userTemplate === def.userTemplate &&
+      stableStringify(active.outputSchema) === stableStringify(def.outputSchema);
+    if (upToDate) continue;
+
+    // 내용이 바뀌었으면(또는 아직 버전이 없으면) 새 버전을 만들고 기존 활성 버전은 비활성화한다
+    // — prompt_versions에는 "prompt_id당 활성 버전은 1개뿐"이라는 partial unique index가 있어
+    // (uq_prompt_versions_active) 트랜잭션으로 함께 처리한다.
+    const maxVersion = await prisma.promptVersion.aggregate({
+      where: { promptId: prompt.id },
+      _max: { version: true },
+    });
+    const nextVersion = (maxVersion._max.version ?? 0) + 1;
+
+    await prisma.$transaction([
+      ...(active ? [prisma.promptVersion.update({ where: { id: active.id }, data: { isActive: false } })] : []),
+      prisma.promptVersion.create({
         data: {
           promptId: prompt.id,
-          version: 1,
+          version: nextVersion,
           systemPrompt: def.systemPrompt,
           userTemplate: def.userTemplate,
           variables: def.variables,
           outputSchema: def.outputSchema,
           isActive: true,
-          notes: "초기 시드 버전 (PROJECT_SPEC.md §13)",
+          notes: active ? `v${nextVersion} — 시드 스크립트 내용 갱신` : "초기 시드 버전 (PROJECT_SPEC.md §13)",
         },
-      });
-    }
+      }),
+    ]);
+    bumped++;
   }
-  console.log(`✔ prompts/prompt_versions: ${promptDefs.length}개 task_type`);
+  console.log(`✔ prompts/prompt_versions: ${promptDefs.length}개 task_type (${bumped}개 신규/갱신)`);
 }
 
 main()

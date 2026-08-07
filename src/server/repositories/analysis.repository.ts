@@ -38,6 +38,7 @@ export async function persistAnalysis(input: PersistAnalysisInput): Promise<void
         actionIdeas: input.output.action_ideas,
         aiComment: input.output.ai_comment,
         evidence: input.output.evidence,
+        glossary: input.output.glossary,
         confidence: input.output.confidence,
         promptVersionId: input.promptVersionId,
         modelId: input.modelId,
