@@ -55,7 +55,7 @@ export async function deleteNews(id: string): Promise<boolean> {
  * endpoint would be the next step if that stops being true.
  */
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const { items: published } = await getAdminNewsList({ pageSize: 500, sort: "latest" });
+  const { items: published } = await getAdminNewsList({ pageSize: 100, sort: "latest" });
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = published.filter((n) => n.publishedAt.startsWith(today)).length;
   const totalViews = published.reduce((sum, n) => sum + n.viewCount, 0);

@@ -56,7 +56,7 @@ export type News = z.infer<typeof newsSchema>;
 
 export const newsListParamsSchema = z.object({
   page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(200).default(9),
+  pageSize: z.number().int().min(1).max(100).default(9),
   categoryId: z.string().optional(),
   query: z.string().optional(),
   mediaId: z.string().optional(),

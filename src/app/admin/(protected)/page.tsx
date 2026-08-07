@@ -1,20 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Newspaper, Eye, BrainCircuit, ScanSearch, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { useDashboardStatsQuery, useAdminNewsListQuery } from "@/lib/query/use-admin";
 import { getMediaById } from "@/data/media";
 import { relativeTime, formatCount } from "@/lib/format";
-import { StatCard } from "@/components/admin/stat-card";
 import { WeeklyTrendChart } from "@/components/admin/weekly-trend-chart";
 import { CategoryDistributionChart } from "@/components/admin/category-distribution-chart";
 import { CategoryBadge } from "@/components/news/category-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function AdminDashboardPage() {
-  const { data: stats, isLoading } = useDashboardStatsQuery();
+  const { data: stats } = useDashboardStatsQuery();
   const { data: recentNews } = useAdminNewsListQuery({ sort: "latest", pageSize: 5 });
   const { data: popularNews } = useAdminNewsListQuery({ sort: "views", pageSize: 5 });
 
@@ -24,21 +22,6 @@ export default function AdminDashboardPage() {
         <h1 className="text-page-title">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">오늘의 SB NEWS AI 운영 현황입니다.</p>
       </div>
-
-      {isLoading || !stats ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard icon={Newspaper} label="오늘 등록 뉴스" value={`${stats.todayNewsCount}건`} delta={stats.todayNewsDelta} />
-          <StatCard icon={Eye} label="총 조회수" value={formatCount(stats.totalViews)} delta={stats.totalViewsDelta} />
-          <StatCard icon={BrainCircuit} label="AI 분석 비율" value={`${stats.aiAnalysisRate}%`} />
-          <StatCard icon={ScanSearch} label="스크랩 성공률" value={`${stats.scrapSuccessRate}%`} />
-        </div>
-      )}
 
       {stats && (
         <div className="grid gap-4 lg:grid-cols-2">

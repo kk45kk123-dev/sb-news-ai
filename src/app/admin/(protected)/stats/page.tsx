@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminStatsPage() {
   const { data: stats, isLoading } = useDashboardStatsQuery();
-  const { data: newsList } = useAdminNewsListQuery({ pageSize: 200 });
+  const { data: newsList } = useAdminNewsListQuery({ pageSize: 100 });
 
   const mediaData = React.useMemo(() => {
     if (!newsList) return [];
