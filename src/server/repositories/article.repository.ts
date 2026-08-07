@@ -172,7 +172,16 @@ export async function listArticles(
   return { items: sorted.slice(filters.offset, filters.offset + filters.limit), total: all.length };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * `id`는 URL 경로 세그먼트에서 그대로 들어온다 — UUID 컬럼에 비-UUID 문자열을 조회하면
+ * Prisma가 던지는 P2023(Inconsistent column data)를 캐치하지 않고 그대로 흘려보내면
+ * 존재하지 않는 라우트로 우연히 흘러들어온 요청(예: 지운 하위 경로와 같은 이름의 id)이
+ * 404 대신 500이 된다 — 형식이 안 맞으면 조회 자체를 생략하고 "없음"으로 취급한다.
+ */
 export async function findArticleWithRelations(id: string, orgId: string): Promise<ArticleWithRelations | null> {
+  if (!UUID_RE.test(id)) return null;
   return prisma.article.findFirst({ where: { id, orgId }, include: articleListInclude });
 }
 

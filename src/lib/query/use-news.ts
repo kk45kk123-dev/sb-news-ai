@@ -62,13 +62,6 @@ export function usePopularNewsQuery() {
   });
 }
 
-export function useAiRecommendedNewsQuery(limit = 4) {
-  return useQuery({
-    queryKey: [...queryKeys.news.aiRecommended(), limit],
-    queryFn: () => newsApi.getAiRecommendedNews(limit),
-  });
-}
-
 /** Writes `likeCount` into every cached shape (detail object, or list/array responses containing it). */
 function patchLikeCountEverywhere(queryClient: QueryClient, newsId: string, likeCount: number) {
   queryClient.setQueryData(queryKeys.news.detail(newsId), (old: News | null | undefined) =>
@@ -78,9 +71,6 @@ function patchLikeCountEverywhere(queryClient: QueryClient, newsId: string, like
     old ? { ...old, items: old.items.map((n) => (n.id === newsId ? { ...n, likeCount } : n)) } : old
   );
   queryClient.setQueriesData({ queryKey: queryKeys.news.popular() }, (old: News[] | undefined) =>
-    old?.map((n) => (n.id === newsId ? { ...n, likeCount } : n))
-  );
-  queryClient.setQueriesData({ queryKey: queryKeys.news.aiRecommended() }, (old: News[] | undefined) =>
     old?.map((n) => (n.id === newsId ? { ...n, likeCount } : n))
   );
 }

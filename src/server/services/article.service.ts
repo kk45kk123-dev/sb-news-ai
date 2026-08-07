@@ -136,20 +136,6 @@ export async function getPopularPublicNews(orgId: string, limit = 5): Promise<Ne
   return items.map((a) => toNewsDto(a));
 }
 
-export async function getAiRecommendedPublicNews(orgId: string, limit = 4): Promise<News[]> {
-  const { items } = await listArticles({
-    orgId,
-    dateFrom: new Date(Date.now() - PUBLIC_LIST_WINDOW_DAYS * 24 * 60 * 60 * 1000),
-    dateTo: new Date(),
-    sort: "latest",
-    aiRecommendedOnly: true,
-    statuses: ["published"],
-    offset: 0,
-    limit,
-  });
-  return items.map((a) => toNewsDto(a));
-}
-
 export async function getPublicNewsByIds(orgId: string, ids: string[]): Promise<News[]> {
   const items = await findArticlesByIds(orgId, ids);
   const byId = new Map(items.map((a) => [a.id, toNewsDto(a)] as const));

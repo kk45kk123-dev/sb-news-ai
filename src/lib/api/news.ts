@@ -50,10 +50,6 @@ export async function getPopularNews(limit = 5): Promise<News[]> {
   return apiFetch<News[]>(`/api/v1/articles/popular${buildQuery({ limit })}`);
 }
 
-export async function getAiRecommendedNews(limit = 4): Promise<News[]> {
-  return apiFetch<News[]>(`/api/v1/articles/ai-recommended${buildQuery({ limit })}`);
-}
-
 export async function getNewsByIds(ids: string[]): Promise<News[]> {
   if (ids.length === 0) return [];
   return apiFetch<News[]>(`/api/v1/articles/by-ids${buildQuery({ ids: ids.join(",") })}`);
