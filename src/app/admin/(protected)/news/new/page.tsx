@@ -152,11 +152,16 @@ export default function AdminNewsIngestPage() {
       }
 
       const articleId = resBody.data.articleId as string;
+      const status = resBody.data.status as "published" | "draft";
       const publishedRes = await fetch(`/api/v1/articles/${articleId}`);
       const publishedBody = await publishedRes.json().catch(() => null);
       setCreatedNews(publishedBody?.success ? publishedBody.data : null);
       setPhase("done");
-      toast.success("기사가 게시되어 메인 뉴스 목록에 표시됩니다.");
+      toast.success(
+        status === "published"
+          ? "기사가 게시되어 메인 뉴스 목록에 표시됩니다."
+          : "임시저장으로 등록되었습니다. 설정에서 '자동 게시'가 꺼져 있어 검수 후 직접 게시해야 합니다."
+      );
     } catch {
       toast.error("서버에 연결할 수 없어 게시하지 못했습니다.");
     } finally {
@@ -345,12 +350,13 @@ export default function AdminNewsIngestPage() {
               animate={{ opacity: 1, y: 0 }}
               className="flex items-center gap-2 rounded-lg bg-success/10 p-3 text-sm font-semibold text-success"
             >
-              <CheckCircle2 className="h-4 w-4" /> 메인 뉴스에 게시되었습니다.
+              <CheckCircle2 className="h-4 w-4" />
+              {createdNews.status === "published" ? "메인 뉴스에 게시되었습니다." : "임시저장으로 등록되었습니다. 뉴스 관리에서 검수 후 게시해주세요."}
             </motion.div>
             <div className="flex flex-wrap gap-2">
               <Button asChild>
                 <Link href={`/news/${createdNews.id}`} target="_blank">
-                  <ExternalLink className="h-4 w-4" /> 게시된 기사 보기
+                  <ExternalLink className="h-4 w-4" /> {createdNews.status === "published" ? "게시된 기사 보기" : "미리보기"}
                 </Link>
               </Button>
               <Button asChild variant="outline">

@@ -29,6 +29,8 @@ export interface PublishManualArticleInput {
   tokenInput: number;
   tokenOutput: number;
   latencyMs: number;
+  /** Driven by the org's "자동 게시" setting — see settings.service.ts. Defaults to published. */
+  status?: "published" | "draft";
 }
 
 const MANUAL_SOURCE_NAME = "관리자 수동 등록";
@@ -113,7 +115,8 @@ async function resolveManualModel(modelKey: string) {
  * public site (news list/detail/search/home) reads — see article.service.ts's
  * toNewsDto for the read side of this same table.
  */
-export async function publishManualArticle(input: PublishManualArticleInput): Promise<{ articleId: string }> {
+export async function publishManualArticle(input: PublishManualArticleInput): Promise<{ articleId: string; status: "published" | "draft" }> {
+  const status = input.status ?? "published";
   const urlHash = computeUrlHash(input);
 
   const existing = await prisma.article.findUnique({ where: { urlHash } });
@@ -141,7 +144,7 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
           pipelineStage: "analyzed",
           relevance: "relevant",
           categoryId: input.categoryId,
-          status: "published",
+          status,
         },
       });
 
@@ -166,7 +169,7 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
         },
       });
 
-      return { articleId: article.id };
+      return { articleId: article.id, status };
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {

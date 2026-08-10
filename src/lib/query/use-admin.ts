@@ -51,3 +51,18 @@ export function useRegenerateBriefingMutation() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.briefing.today() }),
   });
 }
+
+export function useSettingsQuery() {
+  return useQuery({
+    queryKey: queryKeys.admin.settings(),
+    queryFn: () => adminApi.getSettings(),
+  });
+}
+
+export function useUpdateSettingsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Parameters<typeof adminApi.updateSettings>[0]) => adminApi.updateSettings(patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.settings() }),
+  });
+}

@@ -5,6 +5,7 @@ import { ErrorCode } from "@/types/errors";
 import { getAuthContext, hasRole, verifyCsrf } from "@/server/auth/guard";
 import { recordAudit } from "@/server/services/audit.service";
 import { publishManualArticle, DuplicateArticleError } from "@/server/services/manual-publish.service";
+import { getOrgSettings } from "@/server/services/settings.service";
 
 const publishRequestSchema = z.object({
   title: z.string().min(1),
@@ -40,7 +41,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { articleId } = await publishManualArticle({ ...parsed.data, orgId: ctx.user.orgId, userId: ctx.user.id });
+    const settings = await getOrgSettings(ctx.user.orgId);
+    const { articleId, status } = await publishManualArticle({
+      ...parsed.data,
+      orgId: ctx.user.orgId,
+      userId: ctx.user.id,
+      status: settings.autoPublish ? "published" : "draft",
+    });
 
     try {
       await recordAudit({
@@ -49,14 +56,14 @@ export async function POST(req: NextRequest) {
         action: "admin.article.publish_manual",
         targetType: "article",
         targetId: articleId,
-        after: { title: parsed.data.title, sourceUrl: parsed.data.sourceUrl },
+        after: { title: parsed.data.title, sourceUrl: parsed.data.sourceUrl, status },
       });
     } catch (auditError) {
       // Publish already committed — don't fail the request over an audit-log write.
       console.error("[admin/articles] recordAudit failed after successful publish", auditError);
     }
 
-    return apiOk({ articleId }, undefined, 201);
+    return apiOk({ articleId, status }, undefined, 201);
   } catch (e) {
     if (e instanceof DuplicateArticleError) {
       return apiError(ErrorCode.VALIDATION_ERROR, "이미 게시된 기사입니다 (동일 URL 또는 동일 본문).", 409);
