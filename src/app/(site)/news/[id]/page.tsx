@@ -18,6 +18,7 @@ import { LikeButton } from "@/components/news/like-button";
 import { BookmarkButton } from "@/components/news/bookmark-button";
 import { ShareButton } from "@/components/news/share-button";
 import { RelatedNewsList } from "@/components/news/related-news-list";
+import { PersonalMemo } from "@/components/news/personal-memo";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUserActivity } from "@/context/user-activity-context";
@@ -205,6 +206,8 @@ export default function NewsDetailPage() {
           <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
           <p>본 분석은 AI가 기사 본문을 해석해 생성한 참고 자료이며, 실제 의사결정 시에는 원문과 관련 공시자료를 함께 확인하시기 바랍니다.</p>
         </div>
+
+        <PersonalMemo newsId={news.id} />
       </div>
 
       <RelatedNewsList title="관련 기사" items={related} isLoading={relatedLoading} />

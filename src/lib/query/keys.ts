@@ -7,6 +7,7 @@ export const queryKeys = {
     related: (id: string) => ["news", "related", id] as const,
     sameTopic: (id: string) => ["news", "same-topic", id] as const,
     popular: () => ["news", "popular"] as const,
+    memo: (id: string) => ["news", "memo", id] as const,
   },
   categories: {
     all: () => ["categories"] as const,

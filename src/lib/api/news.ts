@@ -84,3 +84,23 @@ export async function setBookmark(id: string, bookmarked: boolean): Promise<void
     body: JSON.stringify({ bookmarked }),
   });
 }
+
+/** Anonymous visitors get 401 here — treated as "no memo", not an error. */
+export async function getMemo(id: string): Promise<string> {
+  try {
+    const { memo } = await apiFetch<{ memo: string }>(`/api/v1/articles/${id}/memo`);
+    return memo;
+  } catch (e) {
+    if (e instanceof ApiRequestError && e.status === 401) return "";
+    throw e;
+  }
+}
+
+/** Requires login — throws ApiRequestError(401) otherwise, which callers surface as a toast. */
+export async function setMemo(id: string, memo: string): Promise<string> {
+  const res = await apiFetch<{ memo: string }>(`/api/v1/articles/${id}/memo`, {
+    method: "PUT",
+    body: JSON.stringify({ memo }),
+  });
+  return res.memo;
+}

@@ -75,6 +75,21 @@ function patchLikeCountEverywhere(queryClient: QueryClient, newsId: string, like
   );
 }
 
+export function useMemoQuery(newsId: string) {
+  return useQuery({
+    queryKey: queryKeys.news.memo(newsId),
+    queryFn: () => newsApi.getMemo(newsId),
+  });
+}
+
+export function useUpdateMemoMutation(newsId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (memo: string) => newsApi.setMemo(newsId, memo),
+    onSuccess: (memo) => queryClient.setQueryData(queryKeys.news.memo(newsId), memo),
+  });
+}
+
 export function useLikeMutation(newsId: string, currentLikeCount: number) {
   const queryClient = useQueryClient();
   return useMutation({

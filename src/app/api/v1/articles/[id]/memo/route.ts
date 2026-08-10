@@ -3,9 +3,20 @@ import { z } from "zod";
 import { apiOk, apiError } from "@/lib/api-response";
 import { ErrorCode } from "@/types/errors";
 import { getAuthContext, verifyCsrf } from "@/server/auth/guard";
-import { setMemo } from "@/server/repositories/user-article-state.repository";
+import { setMemo, getState } from "@/server/repositories/user-article-state.repository";
 
 const bodySchema = z.object({ memo: z.string().max(2000) });
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await getAuthContext(req);
+  if (!ctx) {
+    return apiError(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.", 401);
+  }
+
+  const { id } = await params;
+  const state = await getState(ctx.user.id, id);
+  return apiOk({ memo: state?.memo ?? "" });
+}
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await getAuthContext(req);
