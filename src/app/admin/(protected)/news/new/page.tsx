@@ -5,7 +5,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { CheckCircle2, LinkIcon, FileText, Sparkles, ExternalLink, RotateCcw, AlertCircle } from "lucide-react";
-import { CATEGORIES, getCategoryById, getCategoryGradient } from "@/data/categories";
+import { getCategoryGradient } from "@/data/categories";
+import { useCategories } from "@/context/categories-context";
 import { createInitialPipelineSteps } from "@/lib/api/admin";
 import type { PipelineStep, PipelineStepStatus } from "@/lib/schemas/admin.schema";
 import type { IngestAnalyzeOutput } from "@/lib/schemas/ingest.schema";
@@ -36,6 +37,7 @@ interface DraftArticle {
 }
 
 export default function AdminNewsIngestPage() {
+  const categories = useCategories();
   const [mode, setMode] = React.useState<"url" | "text">("url");
   const [url, setUrl] = React.useState("");
   const [text, setText] = React.useState("");
@@ -267,7 +269,7 @@ export default function AdminNewsIngestPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => (
+                    {categories.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
                       </SelectItem>
@@ -335,7 +337,7 @@ export default function AdminNewsIngestPage() {
               <h3 className="text-base font-bold leading-snug">{draft.analysis.title}</h3>
               <CategoryBadge categoryId={draft.analysis.categoryId} />
               <p className="text-xs text-muted-foreground">
-                {draft.sourceUrl ? "외부 링크" : "직접 등록"} · {getCategoryById(draft.analysis.categoryId)?.name}
+                {draft.sourceUrl ? "외부 링크" : "직접 등록"} · {categories.find((c) => c.id === draft.analysis.categoryId)?.name}
               </p>
             </CardContent>
           </Card>

@@ -7,7 +7,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { CATEGORIES } from "@/data/categories";
+import { useCategories } from "@/context/categories-context";
 import { newsEditFormSchema, type NewsEditFormInput } from "@/lib/schemas/news.schema";
 import { useNewsDetailQuery } from "@/lib/query/use-news";
 import { useUpdateNewsMutation } from "@/lib/query/use-admin";
@@ -44,6 +44,7 @@ export default function AdminNewsEditPage() {
 }
 
 function EditForm({ news }: { news: News }) {
+  const categories = useCategories();
   const router = useRouter();
   const updateMutation = useUpdateNewsMutation();
 
@@ -124,7 +125,7 @@ function EditForm({ news }: { news: News }) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {CATEGORIES.map((c) => (
+                        {categories.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
                             {c.name}
                           </SelectItem>

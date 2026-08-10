@@ -33,3 +33,9 @@ const CATEGORY_GRADIENT: Record<string, [string, string]> = {
 export function getCategoryGradient(categoryId: string): [string, string] {
   return CATEGORY_GRADIENT[categoryId] ?? CATEGORY_GRADIENT.c8!;
 }
+
+/** Merges admin-renamed category display names (Organization.settings.categoryNames) over the base list. */
+export function applyCategoryNameOverrides(overrides: Record<string, string>): Category[] {
+  if (Object.keys(overrides).length === 0) return CATEGORIES;
+  return CATEGORIES.map((c) => (overrides[c.id] ? { ...c, name: overrides[c.id]! } : c));
+}

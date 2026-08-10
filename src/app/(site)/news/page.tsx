@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { CATEGORIES, getCategoryById } from "@/data/categories";
+import { useCategories, useCategoryById } from "@/context/categories-context";
 import { useInfiniteNewsListQuery } from "@/lib/query/use-news";
 import { NewsGrid } from "@/components/news/news-grid";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,8 @@ function NewsListPageContent() {
   const categoryId = searchParams.get("category") ?? undefined;
   const sort = (searchParams.get("sort") as NewsListParams["sort"] | null) ?? "latest";
 
-  const category = categoryId ? getCategoryById(categoryId) : undefined;
+  const categories = useCategories();
+  const category = useCategoryById(categoryId);
 
   function updateParams(next: { category?: string | null; sort?: string | null }) {
     const params = new URLSearchParams(searchParams.toString());
@@ -63,7 +64,7 @@ function NewsListPageContent() {
         >
           전체
         </button>
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <button
             key={c.id}
             onClick={() => updateParams({ category: c.id })}

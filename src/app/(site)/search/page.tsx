@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { Search as SearchIcon } from "lucide-react";
-import { CATEGORIES } from "@/data/categories";
+import { useCategories } from "@/context/categories-context";
 import { useSearchQuery, usePublisherListQuery } from "@/lib/query/use-search";
 import { SearchBar } from "@/components/search/search-bar";
 import { NewsGrid } from "@/components/news/news-grid";
@@ -29,6 +29,7 @@ function SearchPageContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
 
+  const categories = useCategories();
   const [categoryId, setCategoryId] = React.useState<string>("all");
   const [publisher, setPublisher] = React.useState<string>("all");
   const [datePreset, setDatePreset] = React.useState<(typeof DATE_PRESETS)[number]["id"]>("all");
@@ -61,7 +62,7 @@ function SearchPageContent() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">전체 카테고리</SelectItem>
-                {CATEGORIES.map((c) => (
+                {categories.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
                   </SelectItem>

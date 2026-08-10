@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Bookmark, ChevronDown, Newspaper, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
-import { CATEGORIES } from "@/data/categories";
+import { useCategories } from "@/context/categories-context";
 import { SearchBar } from "@/components/search/search-bar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function Navbar() {
+  const categories = useCategories();
+
   return (
     <header className="sticky top-0 z-40 border-b border-border glass">
       <div className="container flex h-16 items-center gap-4">
@@ -36,7 +38,7 @@ export function Navbar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <DropdownMenuItem key={c.id} asChild>
                   <Link href={`/news?category=${c.id}`}>
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: `hsl(var(--${c.colorVar}))` }} />

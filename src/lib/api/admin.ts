@@ -1,4 +1,4 @@
-import { CATEGORIES } from "@/data/categories";
+import { applyCategoryNameOverrides } from "@/data/categories";
 import { apiFetch } from "@/lib/api/http";
 import { dashboardStatsSchema, pipelineStepSchema, type DashboardStats, type PipelineStep } from "@/lib/schemas/admin.schema";
 import { newsListParamsSchema, type NewsListParams, type NewsListResponse, type News } from "@/lib/schemas/news.schema";
@@ -56,13 +56,16 @@ export async function deleteNews(id: string): Promise<boolean> {
  * endpoint would be the next step if that stops being true.
  */
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const { items: published } = await getAdminNewsList({ pageSize: 100, sort: "latest" });
+  const [{ items: published }, settings] = await Promise.all([
+    getAdminNewsList({ pageSize: 100, sort: "latest" }),
+    getSettings(),
+  ]);
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = published.filter((n) => n.publishedAt.startsWith(today)).length;
   const totalViews = published.reduce((sum, n) => sum + n.viewCount, 0);
   const highConfidence = published.filter((n) => n.aiConfidence === "high").length;
 
-  const categoryCounts = CATEGORIES.map((c) => ({
+  const categoryCounts = applyCategoryNameOverrides(settings.categoryNames).map((c) => ({
     categoryId: c.id,
     name: c.name,
     count: published.filter((n) => n.categoryId === c.id).length,

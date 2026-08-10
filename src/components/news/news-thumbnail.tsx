@@ -1,5 +1,7 @@
+"use client";
+
 import { Landmark, LineChart, Newspaper, Building2, Banknote, Globe2, Smartphone, ShieldAlert } from "lucide-react";
-import { getCategoryById } from "@/data/categories";
+import { useCategoryById } from "@/context/categories-context";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_ICON: Record<string, typeof Newspaper> = {
@@ -22,7 +24,7 @@ interface NewsThumbnailProps {
 
 export function NewsThumbnail({ categoryId, gradient, className, size = "sm" }: NewsThumbnailProps) {
   const Icon = CATEGORY_ICON[categoryId] ?? Newspaper;
-  const category = getCategoryById(categoryId);
+  const category = useCategoryById(categoryId);
 
   return (
     <div

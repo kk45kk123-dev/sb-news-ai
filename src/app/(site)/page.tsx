@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useNewsListQuery } from "@/lib/query/use-news";
-import { CATEGORIES } from "@/data/categories";
+import { useCategories } from "@/context/categories-context";
 import { FeaturedArticle } from "@/components/home/featured-article";
 import { MarketBriefing } from "@/components/home/market-briefing";
 import { EconomicCalendar } from "@/components/home/economic-calendar";
@@ -12,6 +12,7 @@ import { NewsGrid } from "@/components/news/news-grid";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HomePage() {
+  const categories = useCategories();
   const { data: featuredData, isLoading: featuredLoading } = useNewsListQuery({ sort: "impact", pageSize: 1 });
   const { data: latestData, isLoading: latestLoading } = useNewsListQuery({ sort: "latest", pageSize: 6 });
 
@@ -43,7 +44,7 @@ export default function HomePage() {
         </div>
 
         <div className="mb-5 flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <Link
               key={c.id}
               href={`/news?category=${c.id}`}

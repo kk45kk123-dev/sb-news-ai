@@ -3,8 +3,8 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { Pencil } from "lucide-react";
-import { CATEGORIES } from "@/data/categories";
-import { useCategoryCountsQuery } from "@/lib/query/use-categories";
+import { useCategoryCountsQuery, useAdminCategories } from "@/lib/query/use-categories";
+import { useSettingsQuery, useUpdateSettingsMutation } from "@/lib/query/use-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminCategoriesPage() {
+  const categories = useAdminCategories();
+  const { data: settings } = useSettingsQuery();
+  const updateSettings = useUpdateSettingsMutation();
   const { data: counts, isLoading } = useCategoryCountsQuery();
   const [editing, setEditing] = React.useState<string | null>(null);
   const [nameDraft, setNameDraft] = React.useState("");
@@ -24,8 +27,18 @@ export default function AdminCategoriesPage() {
   }
 
   function saveEdit() {
-    toast.success(`"${nameDraft}"(으)로 카테고리 이름을 변경했습니다.`);
-    setEditing(null);
+    if (!editing || !nameDraft.trim()) return;
+    const categoryNames = { ...(settings?.categoryNames ?? {}), [editing]: nameDraft.trim() };
+    updateSettings.mutate(
+      { categoryNames },
+      {
+        onSuccess: () => {
+          toast.success(`"${nameDraft.trim()}"(으)로 카테고리 이름을 변경했습니다.`);
+          setEditing(null);
+        },
+        onError: (err) => toast.error(err instanceof Error ? err.message : "카테고리 이름 변경에 실패했습니다."),
+      }
+    );
   }
 
   return (
@@ -47,7 +60,7 @@ export default function AdminCategoriesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {CATEGORIES.map((c) => {
+              {categories.map((c) => {
                 const count = counts?.find((x) => x.categoryId === c.id)?.count;
                 return (
                   <TableRow key={c.id}>
@@ -85,7 +98,9 @@ export default function AdminCategoriesPage() {
             <DialogClose asChild>
               <Button variant="outline">취소</Button>
             </DialogClose>
-            <Button onClick={saveEdit}>저장</Button>
+            <Button onClick={saveEdit} disabled={updateSettings.isPending}>
+              {updateSettings.isPending ? "저장 중..." : "저장"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

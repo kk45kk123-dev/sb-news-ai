@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Pencil, Trash2, Search, CalendarClock, MoreHorizontal } from "lucide-react";
-import { CATEGORIES } from "@/data/categories";
+import { useCategories } from "@/context/categories-context";
 import { formatCount, relativeTime } from "@/lib/format";
 import { useAdminNewsListQuery, useDeleteNewsMutation, useUpdateNewsMutation } from "@/lib/query/use-admin";
 import { CategoryBadge } from "@/components/news/category-badge";
@@ -47,6 +47,7 @@ const STATUS_VARIANT: Record<NewsStatus, "success" | "warning" | "muted"> = {
 };
 
 export default function AdminNewsListPage() {
+  const categories = useCategories();
   const [page, setPage] = React.useState(1);
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<string>("all");
@@ -145,7 +146,7 @@ export default function AdminNewsListPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">전체 카테고리</SelectItem>
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}
               </SelectItem>

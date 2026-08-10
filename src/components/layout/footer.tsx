@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
-import { CATEGORIES } from "@/data/categories";
+import { useCategories } from "@/context/categories-context";
 
 export function Footer() {
+  const categories = useCategories();
+
   return (
     <footer className="border-t border-border bg-card">
       <div className="container grid gap-10 py-12 md:grid-cols-[1.2fr_1fr_1fr]">
@@ -20,7 +24,7 @@ export function Footer() {
         <div>
           <p className="mb-3 text-sm font-semibold">카테고리</p>
           <ul className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <li key={c.id}>
                 <Link href={`/news?category=${c.id}`} className="transition-colors hover:text-foreground">
                   {c.name}

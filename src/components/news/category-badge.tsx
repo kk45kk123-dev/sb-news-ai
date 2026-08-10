@@ -1,4 +1,6 @@
-import { getCategoryById } from "@/data/categories";
+"use client";
+
+import { useCategoryById } from "@/context/categories-context";
 import { cn } from "@/lib/utils";
 
 const BADGE_CLASS: Record<string, string> = {
@@ -13,7 +15,7 @@ const BADGE_CLASS: Record<string, string> = {
 };
 
 export function CategoryBadge({ categoryId, className }: { categoryId: string; className?: string }) {
-  const category = getCategoryById(categoryId);
+  const category = useCategoryById(categoryId);
   if (!category) return null;
   return (
     <span
