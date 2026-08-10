@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ChevronDown, Eye, Info, Newspaper, Sparkles } from "lucide-react";
-import { getMediaById } from "@/data/media";
 import { relativeTime, formatCount } from "@/lib/format";
 import { incrementView } from "@/lib/api/news";
 import { useNewsDetailQuery, useRelatedNewsQuery, useSameTopicNewsQuery } from "@/lib/query/use-news";
@@ -93,7 +92,6 @@ export default function NewsDetailPage() {
     );
   }
 
-  const media = getMediaById(news.mediaId);
   const glossaryTerms = news.glossary.length
     ? Object.fromEntries(news.glossary.map((g) => [g.term, g.definition]))
     : undefined;
@@ -122,7 +120,7 @@ export default function NewsDetailPage() {
         <h1 className="mt-4 text-article-title">{news.title}</h1>
 
         <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta">
-          <span className="font-semibold text-foreground">{media?.name}</span>
+          <span className="font-semibold text-foreground">{news.publisher}</span>
           <span className="text-border">·</span>
           <span>{news.reporter}</span>
           <span className="text-border">·</span>

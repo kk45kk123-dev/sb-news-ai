@@ -4,8 +4,7 @@ import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { Search as SearchIcon } from "lucide-react";
 import { CATEGORIES } from "@/data/categories";
-import { MEDIA_OUTLETS } from "@/data/media";
-import { useSearchQuery } from "@/lib/query/use-search";
+import { useSearchQuery, usePublisherListQuery } from "@/lib/query/use-search";
 import { SearchBar } from "@/components/search/search-bar";
 import { NewsGrid } from "@/components/news/news-grid";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,16 +30,17 @@ function SearchPageContent() {
   const query = searchParams.get("q") ?? "";
 
   const [categoryId, setCategoryId] = React.useState<string>("all");
-  const [mediaId, setMediaId] = React.useState<string>("all");
+  const [publisher, setPublisher] = React.useState<string>("all");
   const [datePreset, setDatePreset] = React.useState<(typeof DATE_PRESETS)[number]["id"]>("all");
 
   const preset = DATE_PRESETS.find((p) => p.id === datePreset)!;
   const dateFrom = preset.days ? new Date(Date.now() - preset.days * 86400000).toISOString() : undefined;
 
+  const { data: publishers } = usePublisherListQuery();
   const { data, isLoading } = useSearchQuery({
     query,
     categoryId: categoryId === "all" ? undefined : categoryId,
-    mediaId: mediaId === "all" ? undefined : mediaId,
+    publisher: publisher === "all" ? undefined : publisher,
     dateFrom,
     pageSize: 24,
   });
@@ -69,15 +69,15 @@ function SearchPageContent() {
               </SelectContent>
             </Select>
 
-            <Select value={mediaId} onValueChange={setMediaId}>
+            <Select value={publisher} onValueChange={setPublisher}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="언론사" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">전체 언론사</SelectItem>
-                {MEDIA_OUTLETS.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name}
+                {publishers?.map((p) => (
+                  <SelectItem key={p.publisher} value={p.publisher}>
+                    {p.publisher} ({p.count})
                   </SelectItem>
                 ))}
               </SelectContent>

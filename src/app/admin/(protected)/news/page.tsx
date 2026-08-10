@@ -5,7 +5,6 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Pencil, Trash2, Search, CalendarClock, MoreHorizontal } from "lucide-react";
 import { CATEGORIES } from "@/data/categories";
-import { getMediaById } from "@/data/media";
 import { formatCount, relativeTime } from "@/lib/format";
 import { useAdminNewsListQuery, useDeleteNewsMutation, useUpdateNewsMutation } from "@/lib/query/use-admin";
 import { CategoryBadge } from "@/components/news/category-badge";
@@ -187,7 +186,6 @@ export default function AdminNewsListPage() {
               </TableHeader>
               <TableBody>
                 {items.map((n) => {
-                  const media = getMediaById(n.mediaId);
                   return (
                     <TableRow key={n.id}>
                       <TableCell className="max-w-xs">
@@ -198,7 +196,7 @@ export default function AdminNewsListPage() {
                           {n.title}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{media?.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{n.publisher}</TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-0.5">
                           <Badge variant={STATUS_VARIANT[n.status]}>{STATUS_LABEL[n.status]}</Badge>

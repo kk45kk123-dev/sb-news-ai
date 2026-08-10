@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import type { News } from "@/lib/schemas/news.schema";
-import { getMediaById } from "@/data/media";
 import { relativeTime, formatCount } from "@/lib/format";
 import { NewsThumbnail } from "@/components/news/news-thumbnail";
 import { CategoryBadge } from "@/components/news/category-badge";
@@ -12,8 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
 
 export function FeaturedArticle({ item }: { item: News }) {
-  const media = getMediaById(item.mediaId);
-
   return (
     <Link
       href={`/news/${item.id}`}
@@ -40,7 +37,7 @@ export function FeaturedArticle({ item }: { item: News }) {
         <div className="mt-auto flex items-center gap-2 pt-2">
           <AiImportance score={item.aiImportance} />
           <span className="text-xs text-muted-foreground">·</span>
-          <span className="text-xs font-medium text-foreground/80">{media?.name}</span>
+          <span className="text-xs font-medium text-foreground/80">{item.publisher}</span>
           <span className="text-xs text-muted-foreground">·</span>
           <span className="text-xs text-muted-foreground">{relativeTime(item.publishedAt)}</span>
           <span className="text-xs text-muted-foreground">·</span>

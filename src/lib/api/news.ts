@@ -1,9 +1,11 @@
 import { apiFetch, ApiRequestError } from "@/lib/api/http";
 import {
   newsListParamsSchema,
+  publisherListSchema,
   type NewsListParams,
   type NewsListResponse,
   type News,
+  type PublisherCount,
 } from "@/lib/schemas/news.schema";
 
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
@@ -22,11 +24,17 @@ export async function getNewsList(rawParams: Partial<NewsListParams> = {}): Prom
     pageSize: params.pageSize,
     categoryId: params.categoryId,
     query: params.query,
+    publisher: params.publisher,
     dateFrom: params.dateFrom,
     dateTo: params.dateTo,
     sort: params.sort,
   });
   return apiFetch<NewsListResponse>(`/api/v1/articles${qs}`);
+}
+
+export async function getPublisherList(): Promise<PublisherCount[]> {
+  const data = await apiFetch<unknown>("/api/v1/publishers");
+  return publisherListSchema.parse(data);
 }
 
 export async function getNewsDetail(id: string): Promise<News | null> {

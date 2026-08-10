@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import type { News } from "@/lib/schemas/news.schema";
-import { getMediaById } from "@/data/media";
 import { relativeTime, formatCount } from "@/lib/format";
 import { NewsThumbnail } from "@/components/news/news-thumbnail";
 import { CategoryBadge } from "@/components/news/category-badge";
@@ -26,7 +25,6 @@ export function RelatedNewsList({ title, items, isLoading }: RelatedNewsListProp
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
         {!isLoading &&
           items?.map((item) => {
-            const media = getMediaById(item.mediaId);
             return (
               <Link
                 key={item.id}
@@ -40,7 +38,7 @@ export function RelatedNewsList({ title, items, isLoading }: RelatedNewsListProp
                     {item.title}
                   </p>
                   <div className="mt-1.5 flex items-center gap-1.5 text-meta">
-                    <span>{media?.name}</span>
+                    <span>{item.publisher}</span>
                     <span className="text-border">·</span>
                     <span>{relativeTime(item.publishedAt)}</span>
                     <span className="text-border">·</span>

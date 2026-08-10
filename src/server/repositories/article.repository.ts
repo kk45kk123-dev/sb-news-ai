@@ -84,6 +84,8 @@ export interface ListArticlesFilters {
   /** Defaults to ["published"] at the service layer for anonymous/reader callers. */
   statuses?: string[];
   aiRecommendedOnly?: boolean;
+  /** Exact match against Article.publisher (see listDistinctPublishers for the picklist). */
+  publisher?: string;
 }
 
 const articleListInclude = {
@@ -144,6 +146,9 @@ export async function listArticles(
   }
   if (filters.statuses?.length) {
     where.status = { in: filters.statuses };
+  }
+  if (filters.publisher) {
+    where.publisher = filters.publisher;
   }
 
   if (filters.sort === "latest" || filters.sort === "views") {
@@ -240,6 +245,18 @@ export async function findArticlesByIds(orgId: string, ids: string[]): Promise<A
     where: { orgId, id: { in: ids } },
     include: articleListInclude,
   });
+}
+
+/** Real distinct publisher values (RSS 출처명/등록 도메인 등) for the search page's 언론사 필터 picklist. */
+export async function listDistinctPublishers(orgId: string): Promise<{ publisher: string; count: number }[]> {
+  const rows = await prisma.article.groupBy({
+    by: ["publisher"],
+    where: { orgId, status: "published", publisher: { not: null } },
+    _count: { _all: true },
+  });
+  return rows
+    .map((r) => ({ publisher: r.publisher as string, count: r._count._all }))
+    .sort((a, b) => b.count - a.count);
 }
 
 /**

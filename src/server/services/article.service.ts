@@ -6,6 +6,7 @@ import {
   findSameTopicArticles,
   findPopularArticles,
   findArticlesByIds,
+  listDistinctPublishers,
   type ArticleWithRelations,
 } from "@/server/repositories/article.repository";
 import { getCategoryGradient } from "@/data/categories";
@@ -40,7 +41,7 @@ export function toNewsDto(article: ArticleWithRelations): News {
     slug: article.id,
     title: article.title,
     thumbnailGradient: getCategoryGradient(categoryId),
-    mediaId: isExternal ? "m-external" : "m-direct",
+    publisher: article.publisher ?? "출처 미상",
     reporter: article.author ?? "관리자 등록",
     publishedAt: article.publishedAt.toISOString(),
     viewCount: article.viewCount,
@@ -67,6 +68,7 @@ export const publicNewsListQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(9),
   categoryId: z.string().optional(),
   query: z.string().trim().min(1).optional(),
+  publisher: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   sort: z.enum(["latest", "views", "impact"]).default("latest"),
@@ -96,6 +98,7 @@ export async function listPublicNews(
     dateTo,
     sort: query.sort,
     categoryId: query.categoryId,
+    publisher: query.publisher,
     aiRecommendedOnly: query.aiOnly,
     statuses: query.includeAllStatuses ? undefined : ["published"],
     offset: (query.page - 1) * query.pageSize,
@@ -141,4 +144,9 @@ export async function getPublicNewsByIds(orgId: string, ids: string[]): Promise<
   const items = await findArticlesByIds(orgId, ids);
   const byId = new Map(items.map((a) => [a.id, toNewsDto(a)] as const));
   return ids.map((id) => byId.get(id)).filter((n): n is News => !!n);
+}
+
+/** Publisher picklist for the 검색 페이지's 언론사 필터 — real values, not a fixed outlet list. */
+export async function listPublishersForOrg(orgId: string): Promise<{ publisher: string; count: number }[]> {
+  return listDistinctPublishers(orgId);
 }

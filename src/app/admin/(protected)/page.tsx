@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import { useDashboardStatsQuery, useAdminNewsListQuery } from "@/lib/query/use-admin";
-import { getMediaById } from "@/data/media";
 import { relativeTime, formatCount } from "@/lib/format";
 import { WeeklyTrendChart } from "@/components/admin/weekly-trend-chart";
 import { CategoryDistributionChart } from "@/components/admin/category-distribution-chart";
@@ -54,7 +53,6 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-1 pt-0">
             {recentNews?.items.map((n) => {
-              const media = getMediaById(n.mediaId);
               return (
                 <Link key={n.id} href={`/news/${n.id}`} className="block rounded-lg px-1.5 py-2 hover:bg-muted/60">
                   <div className="mb-1 flex items-center gap-1.5">
@@ -62,7 +60,7 @@ export default function AdminDashboardPage() {
                     <span className="text-[11px] text-muted-foreground">{relativeTime(n.publishedAt)}</span>
                   </div>
                   <p className="line-clamp-1 text-xs font-semibold">{n.title}</p>
-                  <p className="text-[11px] text-muted-foreground">{media?.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{n.publisher}</p>
                 </Link>
               );
             })}

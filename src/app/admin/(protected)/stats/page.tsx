@@ -4,11 +4,12 @@ import * as React from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useDashboardStatsQuery } from "@/lib/query/use-admin";
 import { useAdminNewsListQuery } from "@/lib/query/use-admin";
-import { MEDIA_OUTLETS } from "@/data/media";
 import { WeeklyTrendChart } from "@/components/admin/weekly-trend-chart";
 import { CategoryDistributionChart } from "@/components/admin/category-distribution-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const MAX_PUBLISHER_BARS = 10;
 
 export default function AdminStatsPage() {
   const { data: stats, isLoading } = useDashboardStatsQuery();
@@ -16,10 +17,14 @@ export default function AdminStatsPage() {
 
   const mediaData = React.useMemo(() => {
     if (!newsList) return [];
-    return MEDIA_OUTLETS.map((m) => ({
-      name: m.name,
-      count: newsList.items.filter((n) => n.mediaId === m.id).length,
-    })).sort((a, b) => b.count - a.count);
+    const counts = new Map<string, number>();
+    for (const n of newsList.items) {
+      counts.set(n.publisher, (counts.get(n.publisher) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, MAX_PUBLISHER_BARS);
   }, [newsList]);
 
   if (isLoading || !stats) {

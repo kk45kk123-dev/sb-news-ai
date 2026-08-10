@@ -14,12 +14,12 @@ export const categorySchema = z.object({
 });
 export type Category = z.infer<typeof categorySchema>;
 
-export const mediaSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  initial: z.string(),
+export const publisherSchema = z.object({
+  publisher: z.string(),
+  count: z.number().int().nonnegative(),
 });
-export type Media = z.infer<typeof mediaSchema>;
+export type PublisherCount = z.infer<typeof publisherSchema>;
+export const publisherListSchema = z.array(publisherSchema);
 
 export const glossaryTermSchema = z.object({
   term: z.string(),
@@ -32,7 +32,7 @@ export const newsSchema = z.object({
   slug: z.string(),
   title: z.string(),
   thumbnailGradient: z.tuple([z.string(), z.string()]),
-  mediaId: z.string(),
+  publisher: z.string(),
   reporter: z.string(),
   publishedAt: z.string(),
   viewCount: z.number().int().nonnegative(),
@@ -59,7 +59,7 @@ export const newsListParamsSchema = z.object({
   pageSize: z.number().int().min(1).max(100).default(9),
   categoryId: z.string().optional(),
   query: z.string().optional(),
-  mediaId: z.string().optional(),
+  publisher: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   sort: z.enum(["latest", "views", "impact"]).default("latest"),

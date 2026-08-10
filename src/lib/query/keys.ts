@@ -16,6 +16,9 @@ export const queryKeys = {
     results: (params: Partial<NewsListParams>) => ["search", "results", params] as const,
     suggestions: (q: string) => ["search", "suggestions", q] as const,
   },
+  publishers: {
+    all: () => ["publishers"] as const,
+  },
   admin: {
     newsList: (params: Partial<NewsListParams>) => ["admin", "news", "list", params] as const,
     dashboard: () => ["admin", "dashboard"] as const,

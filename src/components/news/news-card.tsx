@@ -4,7 +4,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Eye, ArrowUpRight } from "lucide-react";
 import type { News } from "@/lib/schemas/news.schema";
-import { getMediaById } from "@/data/media";
 import { relativeTime, formatCount } from "@/lib/format";
 import { MOTION } from "@/lib/motion";
 import { NewsThumbnail } from "@/components/news/news-thumbnail";
@@ -15,8 +14,6 @@ import { BookmarkButton } from "@/components/news/bookmark-button";
 import { ShareButton } from "@/components/news/share-button";
 
 export function NewsCard({ item }: { item: News }) {
-  const media = getMediaById(item.mediaId);
-
   return (
     <motion.article
       initial={false}
@@ -55,7 +52,7 @@ export function NewsCard({ item }: { item: News }) {
           </ul>
 
           <div className="mt-auto flex items-center gap-2 pt-1 text-meta">
-            <span className="font-semibold text-foreground/80">{media?.name}</span>
+            <span className="font-semibold text-foreground/80">{item.publisher}</span>
             <span className="text-border">·</span>
             <span>{relativeTime(item.publishedAt)}</span>
             <span className="text-border">·</span>
