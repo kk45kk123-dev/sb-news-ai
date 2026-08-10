@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as adminApi from "@/lib/api/admin";
+import * as briefingApi from "@/lib/api/briefing";
 import { queryKeys } from "@/lib/query/keys";
 import type { NewsListParams } from "@/lib/schemas/news.schema";
 
@@ -40,5 +41,13 @@ export function useDeleteNewsMutation() {
   return useMutation({
     mutationFn: (id: string) => adminApi.deleteNews(id),
     onSuccess: () => invalidateNewsEverywhere(queryClient),
+  });
+}
+
+export function useRegenerateBriefingMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => briefingApi.regenerateBriefing(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.briefing.today() }),
   });
 }

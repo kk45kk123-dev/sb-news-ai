@@ -7,6 +7,7 @@ import { CATEGORIES } from "@/data/categories";
 import { FeaturedArticle } from "@/components/home/featured-article";
 import { MarketBriefing } from "@/components/home/market-briefing";
 import { EconomicCalendar } from "@/components/home/economic-calendar";
+import { TodayBriefing } from "@/components/home/today-briefing";
 import { NewsGrid } from "@/components/news/news-grid";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -30,6 +31,8 @@ export default function HomePage() {
           <EconomicCalendar />
         </div>
       </section>
+
+      <TodayBriefing />
 
       <section>
         <div className="mb-4 flex items-center justify-between">
