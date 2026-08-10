@@ -11,6 +11,10 @@ const optionalString = z.preprocess(
   z.string().min(1).optional()
 );
 const optionalUrl = z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional());
+const optionalPositiveInt = z.preprocess(
+  (v) => (v === "" || v === undefined ? undefined : Number(v)),
+  z.number().int().positive().optional()
+);
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -24,6 +28,8 @@ const envSchema = z.object({
   HTTPS_PROXY: optionalUrl,
   /** Vercel Cron이 /api/cron/daily-pipeline을 호출할 때 붙이는 Authorization 헤더 검증용. */
   CRON_SECRET: optionalString,
+  /** AI 예산 가드(src/server/ai/budget.ts) — 최근 24시간 ai_call_logs 건수 상한. 미설정 시 기본값 300. */
+  AI_DAILY_CALL_LIMIT: optionalPositiveInt,
 });
 
 export type Env = z.infer<typeof envSchema>;

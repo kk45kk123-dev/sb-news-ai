@@ -4,6 +4,7 @@ import { ErrorCode } from "@/types/errors";
 import { getAuthContext, hasRole, verifyCsrf } from "@/server/auth/guard";
 import { generateTodaysBriefing } from "@/server/services/briefing.service";
 import { AiGatewayError } from "@/server/ai/gateway";
+import { AiBudgetExceededError } from "@/server/ai/budget";
 import { recordAudit } from "@/server/services/audit.service";
 
 export async function POST(req: NextRequest) {
@@ -35,6 +36,9 @@ export async function POST(req: NextRequest) {
       await recordAudit({ ...auditMeta, after: { success: false } });
     } catch (auditError) {
       console.error("[admin/briefings/regenerate] recordAudit failed after generation failure", auditError);
+    }
+    if (e instanceof AiBudgetExceededError) {
+      return apiError(ErrorCode.RATE_LIMITED, "오늘 AI 처리 한도에 도달했습니다. 내일 다시 시도해 주세요.", 429);
     }
     if (e instanceof AiGatewayError) {
       return apiError(ErrorCode.AI_GENERATION_FAILED, "브리핑 생성에 실패했습니다. AI 모델/프롬프트 설정을 확인하세요.", 502);

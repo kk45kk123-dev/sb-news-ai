@@ -1,6 +1,7 @@
 import { prisma } from "@/server/db/client";
 import { findArticleById, setPipelineStage } from "@/server/repositories/article.repository";
 import { getOrgSettings } from "@/server/services/settings.service";
+import { isAiBudgetExceeded } from "@/server/ai/budget";
 import { runAnalyzeJob } from "./analyze.job";
 import type { DedupeJobData } from "./types";
 
@@ -36,5 +37,17 @@ export async function runDedupeJob(data: DedupeJobData): Promise<void> {
   }
 
   await setPipelineStage(article.id, "normalized");
+
+  if (await isAiBudgetExceeded()) {
+    // 한도 초과 — 여기서 조용히 멈춘다. article은 이미 'normalized' 단계라 다음날
+    // 실행의 "미완료 기사 재개" 로직(run-daily-pipeline.ts)이 자동으로 이어서
+    // 처리한다. 'failed'로 표시하지 않는 이유: failed는 "내용 자체가 문제라 재시도
+    // 안 함"을 뜻하는데, 예산 초과는 기사 문제가 아니기 때문이다.
+    console.warn(
+      `[dedupe] AI 일일 호출 한도 도달 — article ${article.id} 분석을 다음 실행으로 미룹니다.`
+    );
+    return;
+  }
+
   await runAnalyzeJob({ articleId: article.id });
 }

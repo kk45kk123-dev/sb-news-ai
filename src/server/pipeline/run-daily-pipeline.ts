@@ -1,6 +1,7 @@
 import { DEFAULT_ORG_ID } from "@/config/constants";
 import { listDueSources } from "@/server/repositories/source.repository";
 import { findArticlesByPipelineStages } from "@/server/repositories/article.repository";
+import { isAiBudgetExceeded } from "@/server/ai/budget";
 import { runCollectJob } from "./collect.job";
 import { runNormalizeJob } from "./normalize.job";
 import { runPurgeJob } from "./purge.job";
@@ -21,6 +22,11 @@ export interface DailyPipelineResult {
   purgedCount: number;
   briefingGenerated: boolean;
   timedOut: boolean;
+  /** 이번 실행 시작 시점에 이미 AI 일일 호출 한도를 넘어선 상태였는지 (관측용).
+   *  실제 차단은 각 AI 호출 직전(dedupe.job.ts, briefing.service.ts)에서 매번
+   *  다시 확인하므로, 이 값이 false여도 실행 도중 한도에 도달하면 그 시점부터는
+   *  똑같이 막힌다. */
+  aiBudgetExceeded: boolean;
   durationMs: number;
 }
 
@@ -47,8 +53,19 @@ export async function runDailyPipeline(): Promise<DailyPipelineResult> {
     purgedCount: 0,
     briefingGenerated: false,
     timedOut: false,
+    aiBudgetExceeded: false,
     durationMs: 0,
   };
+
+  result.aiBudgetExceeded = await isAiBudgetExceeded();
+  if (result.aiBudgetExceeded) {
+    // 수집(RSS fetch) 자체는 AI 비용이 없으므로 계속 진행한다 — 새 기사는 그대로
+    // collected/normalized 단계에 쌓이고, 내일 한도가 풀리면 "미완료 기사 재개"
+    // 로직이 이어서 분석한다. 여기서 막는 건 분석/브리핑 등 AI 호출뿐이다.
+    console.warn(
+      `[daily-pipeline] AI 일일 호출 한도 도달 — 이번 실행은 신규 AI 분석/브리핑 생성을 건너뜁니다 (수집은 계속됨).`
+    );
+  }
 
   // 1) 이전 실행이 시간 제한으로 끊겨 미완료 상태(collected/normalized)로 남은
   //    기사를 이어서 처리한다. "failed"는 여기서 다시 시도하지 않는다 — AI 호출이

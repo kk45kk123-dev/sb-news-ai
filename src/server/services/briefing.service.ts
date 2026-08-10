@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/client";
 import { listBriefingCandidates } from "@/server/repositories/article.repository";
 import { upsertBriefing, findBriefingByDate } from "@/server/repositories/briefing.repository";
 import { generateBriefing, type BriefingCandidate } from "@/server/ai/gateway";
+import { isAiBudgetExceeded, AiBudgetExceededError } from "@/server/ai/budget";
 
 const BRIEFING_WINDOW_HOURS = 24; // F-03 "전일 18시~당일 07시"를 단순화 — 최근 24시간 수집분
 
@@ -84,6 +85,15 @@ export async function generateTodaysBriefing(
   const candidates = await listBriefingCandidates(orgId, dateFrom, now);
 
   if (candidates.length === 0) return null;
+
+  if (await isAiBudgetExceeded()) {
+    // 크론 자동 생성과 관리자 수동 재생성 버튼이 모두 이 함수를 거치므로, 여기 한
+    // 곳에서만 막아도 두 경로 모두 보호된다. "후보 없음"과 원인이 다르므로(자원
+    // 문제 vs 데이터 없음) null 대신 구분되는 에러를 던져 호출부가 각각 다른
+    // 메시지/로그를 남기게 한다 (runBriefingJob, admin/briefings/regenerate).
+    console.warn("[briefing] AI 일일 호출 한도 도달 — 브리핑 생성을 건너뜁니다.");
+    throw new AiBudgetExceededError();
+  }
 
   const briefingCandidates: BriefingCandidate[] = candidates.map((a) => ({
     id: a.id,

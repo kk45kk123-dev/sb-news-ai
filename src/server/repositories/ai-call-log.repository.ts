@@ -28,3 +28,8 @@ export async function recordAiCallLog(input: {
     },
   });
 }
+
+/** AI 예산 가드(src/server/ai/budget.ts)용 — 실제 발생한 호출(재시도 포함) 건수를 센다. */
+export async function countAiCallsSince(since: Date): Promise<number> {
+  return prisma.aiCallLog.count({ where: { createdAt: { gte: since } } });
+}
