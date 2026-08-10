@@ -230,6 +230,23 @@ export async function findSameTopicArticles(
   });
 }
 
+/**
+ * 하루 1회 크론 실행이 시간 제한으로 중간에 끊겼을 때, 다음 실행이 이어서 처리할
+ * 미완료 기사를 찾는다 — collected/normalized 단계에 머물러 있다는 건 정규화→
+ * 중복검사→분석 체인을 끝까지 못 갔다는 뜻이다 (run-daily-pipeline.ts 참고).
+ */
+export async function findArticlesByPipelineStages(
+  orgId: string,
+  stages: PipelineStage[],
+  limit: number
+): Promise<Article[]> {
+  return prisma.article.findMany({
+    where: { orgId, pipelineStage: { in: stages } },
+    orderBy: { collectedAt: "asc" },
+    take: limit,
+  });
+}
+
 export async function findPopularArticles(orgId: string, limit = 5): Promise<ArticleWithRelations[]> {
   return prisma.article.findMany({
     where: { orgId, status: "published" },

@@ -1,8 +1,8 @@
 import { prisma } from "@/server/db/client";
 import { findArticleById, setPipelineStage } from "@/server/repositories/article.repository";
 import { getOrgSettings } from "@/server/services/settings.service";
-import { analyzeQueue } from "./queues";
-import type { DedupeJobData } from "./queues";
+import { runAnalyzeJob } from "./analyze.job";
+import type { DedupeJobData } from "./types";
 
 const RECENT_WINDOW_HOURS = 24;
 
@@ -36,5 +36,5 @@ export async function runDedupeJob(data: DedupeJobData): Promise<void> {
   }
 
   await setPipelineStage(article.id, "normalized");
-  await analyzeQueue.add("analyze", { articleId: article.id });
+  await runAnalyzeJob({ articleId: article.id });
 }

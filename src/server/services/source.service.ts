@@ -8,7 +8,7 @@ import {
   updateSourceStatus,
 } from "@/server/repositories/source.repository";
 import { getCollector } from "@/server/collectors/registry";
-import { collectQueue } from "@/server/pipeline/queues";
+import { runCollectJob } from "@/server/pipeline/collect.job";
 import type { Source } from "@prisma/client";
 
 export const createSourceSchema = z.object({
@@ -89,9 +89,30 @@ export async function testSourceConnection(id: string): Promise<TestSourceResult
   }
 }
 
-/** F-10: "지금 수집" — 스케줄을 기다리지 않고 즉시 collect 잡을 큐에 넣는다. */
-export async function triggerFetchNow(id: string): Promise<void> {
+export interface FetchNowResult {
+  itemsFound: number;
+  itemsNew: number;
+  error?: string;
+}
+
+/**
+ * F-10: "지금 수집" — 스케줄(하루 1회 크론)을 기다리지 않고 즉시 실행한다.
+ * 예전에는 BullMQ 큐에 넣기만 하고 워커가 나중에 처리했지만, 지금은 워커가 상시
+ * 실행되지 않는 환경(Vercel 서버리스)이라 그 방식은 아무 일도 하지 않는 것과
+ * 같았다 — 그래서 요청 안에서 바로 수집을 끝내고 결과를 반환한다.
+ *
+ * runCollectJob은 RSS fetch 자체가 실패하면 예외를 던진다(daily-pipeline이 출처별로
+ * 격리해서 잡기 위함) — 여기서는 그 예외를 "출처를 못 찾음"과 구분해 정상적인
+ * 실패 결과로 바꿔서 반환한다. 관리자가 버튼을 눌렀는데 알 수 없는 에러 화면을
+ * 보는 대신, "이 출처는 지금 실패했다"는 걸 그대로 보여주기 위함이다.
+ */
+export async function triggerFetchNow(id: string): Promise<FetchNowResult> {
   const source = await findSourceById(id);
   if (!source) throw new Error("출처를 찾을 수 없습니다.");
-  await collectQueue.add("collect", { sourceId: id });
+
+  try {
+    return await runCollectJob({ sourceId: id });
+  } catch (e) {
+    return { itemsFound: 0, itemsNew: 0, error: e instanceof Error ? e.message : String(e) };
+  }
 }

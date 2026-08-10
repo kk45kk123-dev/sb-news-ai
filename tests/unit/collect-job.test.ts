@@ -5,7 +5,7 @@ const mockFindSourceById = vi.fn();
 const mockUpdateSourceStatus = vi.fn();
 const mockCreateArticleIfNew = vi.fn();
 const mockRecordCrawlLog = vi.fn();
-const mockNormalizeQueueAdd = vi.fn();
+const mockRunNormalizeJob = vi.fn();
 
 vi.mock("@/server/collectors/registry", () => ({ getCollector: mockGetCollector }));
 vi.mock("@/server/repositories/source.repository", () => ({
@@ -18,7 +18,7 @@ vi.mock("@/server/repositories/article.repository", () => ({
 vi.mock("@/server/repositories/crawl-log.repository", () => ({
   recordCrawlLog: mockRecordCrawlLog,
 }));
-vi.mock("@/server/pipeline/queues", () => ({ normalizeQueue: { add: mockNormalizeQueueAdd } }));
+vi.mock("@/server/pipeline/normalize.job", () => ({ runNormalizeJob: mockRunNormalizeJob }));
 
 const { runCollectJob } = await import("@/server/pipeline/collect.job");
 
@@ -39,7 +39,7 @@ describe("runCollectJob", () => {
     vi.clearAllMocks();
   });
 
-  it("신규 기사만 normalize 큐에 넣고 출처 상태를 ok로 갱신한다", async () => {
+  it("신규 기사만 다음 단계(normalize)로 직접 넘기고 출처 상태를 ok로 갱신한다", async () => {
     mockFindSourceById.mockResolvedValue(baseSource);
     mockGetCollector.mockReturnValue({
       collect: vi.fn().mockResolvedValue([
@@ -50,18 +50,35 @@ describe("runCollectJob", () => {
     mockCreateArticleIfNew
       .mockResolvedValueOnce({ id: "article-a" })
       .mockResolvedValueOnce(null);
+    mockRunNormalizeJob.mockResolvedValue(undefined);
 
-    await runCollectJob({ sourceId: "src-1" });
+    const result = await runCollectJob({ sourceId: "src-1" });
 
-    expect(mockNormalizeQueueAdd).toHaveBeenCalledTimes(1);
-    expect(mockNormalizeQueueAdd).toHaveBeenCalledWith("normalize", { articleId: "article-a" });
+    expect(mockRunNormalizeJob).toHaveBeenCalledTimes(1);
+    expect(mockRunNormalizeJob).toHaveBeenCalledWith({ articleId: "article-a" });
+    expect(result).toEqual({ itemsFound: 2, itemsNew: 1 });
     expect(mockRecordCrawlLog).toHaveBeenCalledWith(
       expect.objectContaining({ status: "success", itemsFound: 2, itemsNew: 1 })
     );
     expect(mockUpdateSourceStatus).toHaveBeenCalledWith("src-1", "ok", 0);
   });
 
-  it("수집 실패 시 다시 던지고(재시도용) 실패 횟수를 늘린다", async () => {
+  it("기사 하나의 다음 단계가 실패해도 나머지 기사와 crawl_log 성공 처리는 그대로 진행한다", async () => {
+    mockFindSourceById.mockResolvedValue(baseSource);
+    mockGetCollector.mockReturnValue({
+      collect: vi.fn().mockResolvedValue([{ url: "https://example.test/a", urlHash: "hash-a" }]),
+    });
+    mockCreateArticleIfNew.mockResolvedValueOnce({ id: "article-a" });
+    mockRunNormalizeJob.mockRejectedValue(new Error("AI 분석 실패"));
+
+    const result = await runCollectJob({ sourceId: "src-1" });
+
+    expect(result).toEqual({ itemsFound: 1, itemsNew: 1 });
+    expect(mockRecordCrawlLog).toHaveBeenCalledWith(expect.objectContaining({ status: "success" }));
+    expect(mockUpdateSourceStatus).toHaveBeenCalledWith("src-1", "ok", 0);
+  });
+
+  it("수집(RSS fetch) 자체가 실패하면 다시 던지고 실패 횟수를 늘린다", async () => {
     mockFindSourceById.mockResolvedValue(baseSource);
     mockGetCollector.mockReturnValue({
       collect: vi.fn().mockRejectedValue(new Error("network down")),
@@ -90,8 +107,9 @@ describe("runCollectJob", () => {
   it("비활성 출처는 조용히 건너뛴다", async () => {
     mockFindSourceById.mockResolvedValue({ ...baseSource, isActive: false });
 
-    await runCollectJob({ sourceId: "src-1" });
+    const result = await runCollectJob({ sourceId: "src-1" });
 
     expect(mockGetCollector).not.toHaveBeenCalled();
+    expect(result).toEqual({ itemsFound: 0, itemsNew: 0 });
   });
 });

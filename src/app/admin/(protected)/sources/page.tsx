@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { getCsrfToken } from "@/lib/csrf-client";
 
 interface Source {
@@ -40,6 +41,7 @@ export default function AdminSourcesPage() {
   const [loading, setLoading] = useState(true);
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [fetchingId, setFetchingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", type: "rss", url: "", fetchIntervalMin: 30 });
   const [formError, setFormError] = useState<string | null>(null);
@@ -86,7 +88,20 @@ export default function AdminSourcesPage() {
   }
 
   async function handleFetchNow(id: string) {
-    await authedFetch(`/api/v1/admin/sources/${id}/fetch-now`, { method: "POST" });
+    setFetchingId(id);
+    const res = await authedFetch(`/api/v1/admin/sources/${id}/fetch-now`, { method: "POST" });
+    const body = await res.json().catch(() => null);
+    setFetchingId(null);
+    if (body?.success) {
+      if (body.data.error) {
+        toast.error(`수집 실패 — ${body.data.error}`);
+      } else {
+        toast.success(`수집 완료 — 발견 ${body.data.itemsFound}건 중 신규 ${body.data.itemsNew}건`);
+      }
+      load();
+    } else {
+      toast.error(body?.error?.message ?? "수집에 실패했습니다.");
+    }
   }
 
   async function handleToggleActive(source: Source) {
@@ -217,9 +232,10 @@ export default function AdminSourcesPage() {
                         </button>
                         <button
                           onClick={() => handleFetchNow(s.id)}
-                          className="rounded-md border border-border-strong px-2 py-1 text-xs hover:bg-bg-subtle"
+                          disabled={fetchingId === s.id}
+                          className="rounded-md border border-border-strong px-2 py-1 text-xs hover:bg-bg-subtle disabled:opacity-50"
                         >
-                          지금 수집
+                          {fetchingId === s.id ? "수집 중..." : "지금 수집"}
                         </button>
                         <button
                           onClick={() => handleDelete(s.id)}

@@ -1,7 +1,7 @@
 import { findArticleById, updateNormalizedFields } from "@/server/repositories/article.repository";
 import { normalizeText } from "@/lib/text";
-import { dedupeQueue } from "./queues";
-import type { NormalizeJobData } from "./queues";
+import { runDedupeJob } from "./dedupe.job";
+import type { NormalizeJobData } from "./types";
 
 export async function runNormalizeJob(data: NormalizeJobData): Promise<void> {
   const article = await findArticleById(data.articleId);
@@ -12,5 +12,5 @@ export async function runNormalizeJob(data: NormalizeJobData): Promise<void> {
     description: article.description ? normalizeText(article.description) : undefined,
   });
 
-  await dedupeQueue.add("dedupe", { articleId: article.id });
+  await runDedupeJob({ articleId: article.id });
 }

@@ -1,25 +1,13 @@
 // 매직 넘버 금지 (§18.1) — 파이프라인 관련 상수는 여기서만 관리한다.
 
-// BullMQ 큐 이름은 콜론을 허용하지 않는다 (런타임에서 확인됨) — 대시로 구분한다.
-export const QUEUE_NAMES = {
-  collect: "pipeline-collect",
-  normalize: "pipeline-normalize",
-  dedupe: "pipeline-dedupe",
-  analyze: "pipeline-analyze",
-  purge: "pipeline-purge",
-  scheduler: "pipeline-scheduler",
-  briefing: "pipeline-briefing",
-} as const;
-
-export const JOB_RETRY_ATTEMPTS = 3; // §5.2: 지수 백오프 재시도(최대 3회) 후 DLQ
-export const JOB_BACKOFF_BASE_MS = 5_000;
-
 export const SOURCE_MAX_CONSECUTIVE_FAILURES = 3; // §F-01: 3회 연속 실패 시 status='error'
 
-export const SCHEDULER_TICK_CRON = "* * * * *"; // 매 1분, 수집 주기가 된 출처를 큐에 넣는다
-export const PURGE_CRON = "0 3 * * *"; // 매일 03:00, raw_content 보존기간 경과분 삭제 (§20-1)
 export const RAW_CONTENT_RETENTION_DAYS = 7; // §8.2
 
-// F-03: "매일 정해진 시각(기본 07:30)에... 생성". 관리자 페이지에서 시각을 바꾸는 기능(§21-6)은
-// Phase 2 이후 admin 설정 테이블과 함께 추가한다 — 지금은 기본값을 코드 상수로 둔다.
-export const BRIEFING_GENERATION_CRON = "30 7 * * *";
+// 무료 티어(Vercel Hobby는 크론을 하루 1회로 제한)에 맞춰 BullMQ 상시 워커 대신
+// 하루 1회 Vercel Cron이 run-daily-pipeline.ts를 호출하는 구조로 바뀌었다
+// (vercel.json의 crons 항목 참고). 아래 시각은 그 크론을 몇 시(KST)에 맞출지의
+// 기준값일 뿐 코드에서 직접 참조하지는 않는다 — vercel.json의 UTC 스케줄과
+// 짝을 맞춰서 관리한다.
+// F-03: "매일 정해진 시각(기본 07:30)에... 생성" — vercel.json: "30 22 * * *" (UTC) = 07:30 KST.
+export const BRIEFING_GENERATION_HOUR_KST = "07:30";

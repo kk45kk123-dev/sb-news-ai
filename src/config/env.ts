@@ -22,6 +22,8 @@ const envSchema = z.object({
   OPENAI_API_KEY: optionalString,
   HTTP_PROXY: optionalUrl,
   HTTPS_PROXY: optionalUrl,
+  /** Vercel Cron이 /api/cron/daily-pipeline을 호출할 때 붙이는 Authorization 헤더 검증용. */
+  CRON_SECRET: optionalString,
 });
 
 export type Env = z.infer<typeof envSchema>;
