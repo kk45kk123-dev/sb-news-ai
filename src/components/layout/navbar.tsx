@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, ChevronDown, Newspaper, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import { Bookmark, ChevronDown, Newspaper, ShieldCheck, TrendingUp } from "lucide-react";
 import { useCategories } from "@/context/categories-context";
 import { SearchBar } from "@/components/search/search-bar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -24,9 +24,7 @@ export function Navbar() {
         <MobileNav />
 
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary text-white shadow-soft">
-            <Sparkles className="h-4 w-4" />
-          </span>
+          <img src="/logo-mark.png" alt="SB NEWS AI" className="h-8 w-8 rounded-lg object-cover shadow-soft" />
           <span className="hidden text-lg font-extrabold tracking-tight text-foreground sm:inline">SB NEWS AI</span>
         </Link>
 

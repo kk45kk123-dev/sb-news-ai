@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 import { useCategories } from "@/context/categories-context";
 
 export function Footer() {
@@ -12,9 +11,7 @@ export function Footer() {
       <div className="container grid gap-10 py-12 md:grid-cols-[1.2fr_1fr_1fr]">
         <div>
           <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary text-white">
-              <Sparkles className="h-3.5 w-3.5" />
-            </span>
+            <img src="/logo-mark.png" alt="SB NEWS AI" className="h-7 w-7 rounded-lg object-cover" />
             <span className="text-base font-extrabold tracking-tight">SB NEWS AI</span>
           </Link>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV_ITEMS } from "@/components/admin/admin-nav-items";
 
@@ -12,9 +11,7 @@ export function AdminSidebar() {
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card lg:flex">
       <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary text-white">
-          <Sparkles className="h-3.5 w-3.5" />
-        </span>
+        <img src="/logo-mark.png" alt="SB NEWS AI" className="h-7 w-7 rounded-lg object-cover" />
         <span className="text-sm font-extrabold tracking-tight">SB NEWS AI 관리자</span>
       </div>
       <nav className="flex-1 space-y-0.5 p-3">

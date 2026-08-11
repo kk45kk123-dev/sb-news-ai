@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bookmark, History, Menu, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import { Bookmark, History, Menu, ShieldCheck, TrendingUp } from "lucide-react";
 import { useCategories } from "@/context/categories-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -24,9 +24,7 @@ export function MobileNav() {
       <SheetContent side="left" className="flex w-80 flex-col gap-6">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary text-white">
-              <Sparkles className="h-3.5 w-3.5" />
-            </span>
+            <img src="/logo-mark.png" alt="SB NEWS AI" className="h-7 w-7 rounded-lg object-cover" />
             SB NEWS AI
           </SheetTitle>
         </SheetHeader>
