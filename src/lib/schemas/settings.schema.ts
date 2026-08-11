@@ -7,7 +7,7 @@ export const orgSettingsSchema = z.object({
   duplicateCheck: z.boolean().default(true),
   emailAlerts: z.boolean().default(false),
   scrapAlerts: z.boolean().default(true),
-  /** categoryId (c1..c8) → custom display name, only for entries the admin has renamed. */
+  /** categoryId (c1..c9) → custom display name, only for entries the admin has renamed. */
   categoryNames: z.record(z.string(), z.string().min(1).max(50)).default({}),
 });
 export type OrgSettings = z.infer<typeof orgSettingsSchema>;

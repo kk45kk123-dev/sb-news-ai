@@ -9,6 +9,7 @@ export const CATEGORIES: Category[] = [
   { id: "c6", name: "글로벌경제", slug: "global", colorVar: "cat-6" },
   { id: "c7", name: "핀테크", slug: "fintech", colorVar: "cat-7" },
   { id: "c8", name: "산업동향", slug: "industry", colorVar: "cat-8" },
+  { id: "c9", name: "보안", slug: "security", colorVar: "cat-9" },
 ];
 
 export function getCategoryById(id: string): Category | undefined {
@@ -28,6 +29,7 @@ const CATEGORY_GRADIENT: Record<string, [string, string]> = {
   c6: ["#0F6E82", "#1CA0B8"],
   c7: ["#146B3A", "#22A35A"],
   c8: ["#8F2236", "#C43A54"],
+  c9: ["#8A6210", "#C99A2E"],
 };
 
 export function getCategoryGradient(categoryId: string): [string, string] {

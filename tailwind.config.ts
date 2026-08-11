@@ -97,6 +97,7 @@ const config: Config = {
         "cat-6": "hsl(var(--cat-6))",
         "cat-7": "hsl(var(--cat-7))",
         "cat-8": "hsl(var(--cat-8))",
+        "cat-9": "hsl(var(--cat-9))",
       },
       borderRadius: {
         lg: "var(--radius)",
