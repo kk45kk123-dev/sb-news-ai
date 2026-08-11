@@ -50,7 +50,7 @@ export function SplashScreen() {
       <img
         src="/icon-512.png"
         alt=""
-        className={`h-28 w-28 rounded-2xl shadow-popover transition-transform duration-[450ms] ease-out sm:h-32 sm:w-32 ${
+        className={`h-44 w-44 rounded-3xl shadow-popover transition-transform duration-[450ms] ease-out sm:h-64 sm:w-64 ${
           fading ? "scale-110" : "scale-100"
         }`}
       />
