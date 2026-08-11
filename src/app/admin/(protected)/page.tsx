@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { toast } from "sonner";
-import { Clock, RefreshCw, Sparkles } from "lucide-react";
+import { RefreshCw, Sparkles } from "lucide-react";
 import { useDashboardStatsQuery, useAdminNewsListQuery, useRegenerateBriefingMutation } from "@/lib/query/use-admin";
 import { useTodayBriefingQuery } from "@/lib/query/use-briefing";
 import { relativeTime, formatCount } from "@/lib/format";
@@ -10,7 +10,6 @@ import { WeeklyTrendChart } from "@/components/admin/weekly-trend-chart";
 import { CategoryDistributionChart } from "@/components/admin/category-distribution-chart";
 import { CategoryBadge } from "@/components/news/category-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -67,8 +66,8 @@ export default function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">인기 기사</CardTitle>
           </CardHeader>
@@ -85,7 +84,7 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">최근 등록 기사</CardTitle>
           </CardHeader>
@@ -102,27 +101,6 @@ export default function AdminDashboardPage() {
                 </Link>
               );
             })}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">최근 로그인</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 pt-0">
-            {stats?.recentLogins.map((login) => (
-              <div key={login.id} className="flex items-center gap-2.5 px-1.5 py-1.5">
-                <Avatar className="h-7 w-7 text-xs">
-                  <AvatarFallback>{login.name.slice(0, 1)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold">{login.name}</p>
-                  <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <Clock className="h-2.5 w-2.5" /> {relativeTime(login.at)}
-                  </p>
-                </div>
-              </div>
-            ))}
           </CardContent>
         </Card>
       </div>
