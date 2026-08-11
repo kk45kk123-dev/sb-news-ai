@@ -295,6 +295,7 @@ export interface ManualArticlePatch {
   keywords?: string[];
   body?: string;
   imageUrl?: string | null;
+  glossary?: { term: string; definition: string }[];
 }
 
 /** Edit surface for admin-published (manual-ingest) articles — see manual-publish.service.ts. */
@@ -329,7 +330,7 @@ export async function updateManualArticle(
         },
       });
     }
-    if (patch.summaryBullets !== undefined || patch.keywords !== undefined) {
+    if (patch.summaryBullets !== undefined || patch.keywords !== undefined || patch.glossary !== undefined) {
       const current = await tx.analysis.findFirst({ where: { articleId: id, isCurrent: true } });
       if (current) {
         await tx.analysis.update({
@@ -339,6 +340,7 @@ export async function updateManualArticle(
             ...(patch.keywords !== undefined
               ? { keywords: patch.keywords }
               : {}),
+            ...(patch.glossary !== undefined ? { glossary: patch.glossary } : {}),
           },
         });
       }

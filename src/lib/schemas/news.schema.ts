@@ -86,5 +86,13 @@ export const newsEditFormSchema = z.object({
   keywords: z.string().min(1, { message: "키워드를 1개 이상 입력해주세요." }),
   body: z.string().min(30, { message: "본문은 30자 이상 입력해주세요." }),
   imageUrl: z.union([z.string().url({ message: "올바른 이미지 URL이 아닙니다." }), z.literal("")]),
+  glossary: z
+    .array(
+      z.object({
+        term: z.string().min(1, { message: "용어를 입력해주세요." }),
+        definition: z.string().min(1, { message: "설명을 입력해주세요." }),
+      })
+    )
+    .max(10, { message: "용어는 최대 10개까지 입력할 수 있습니다." }),
 });
 export type NewsEditFormInput = z.infer<typeof newsEditFormSchema>;

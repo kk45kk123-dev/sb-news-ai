@@ -3,10 +3,10 @@
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react";
 import { useCategories } from "@/context/categories-context";
 import { newsEditFormSchema, type NewsEditFormInput } from "@/lib/schemas/news.schema";
 import { useNewsDetailQuery } from "@/lib/query/use-news";
@@ -67,10 +67,12 @@ function EditForm({ news }: { news: News }) {
       keywords: news.keywords.join(", "),
       body: news.body,
       imageUrl: news.imageUrl ?? "",
+      glossary: news.glossary,
     },
   });
 
   const imageUrlValue = watch("imageUrl");
+  const glossaryFields = useFieldArray({ control, name: "glossary" });
 
   async function onSubmit(values: NewsEditFormInput) {
     updateMutation.mutate(
@@ -84,6 +86,9 @@ function EditForm({ news }: { news: News }) {
           keywords: values.keywords.split(",").map((k) => k.trim()).filter(Boolean),
           body: values.body,
           imageUrl: values.imageUrl.trim() === "" ? null : values.imageUrl.trim(),
+          glossary: values.glossary
+            .map((g) => ({ term: g.term.trim(), definition: g.definition.trim() }))
+            .filter((g) => g.term && g.definition),
         },
       },
       {
@@ -190,6 +195,47 @@ function EditForm({ news }: { news: News }) {
               <Label htmlFor="keywords">핵심 키워드 (쉼표로 구분)</Label>
               <Input id="keywords" {...register("keywords")} />
               {errors.keywords && <p className="text-xs text-destructive">{errors.keywords.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>경제·금융 용어 주석 (선택, 최대 10개)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={glossaryFields.fields.length >= 10}
+                  onClick={() => glossaryFields.append({ term: "", definition: "" })}
+                >
+                  <Plus className="h-3.5 w-3.5" /> 용어 추가
+                </Button>
+              </div>
+              {glossaryFields.fields.length === 0 && (
+                <p className="text-xs text-muted-foreground">등록된 용어 주석이 없습니다.</p>
+              )}
+              {glossaryFields.fields.map((field, index) => (
+                <div key={field.id} className="flex gap-2 rounded-lg border border-border p-3">
+                  <div className="flex-1 space-y-2">
+                    <Input placeholder="용어 (예: 잉여현금흐름)" {...register(`glossary.${index}.term`)} />
+                    <Textarea
+                      rows={2}
+                      placeholder="쉬운 설명 (한두 문장)"
+                      {...register(`glossary.${index}.definition`)}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => glossaryFields.remove(index)}
+                    aria-label="용어 삭제"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              {errors.glossary?.message && <p className="text-xs text-destructive">{errors.glossary.message}</p>}
             </div>
 
             <div className="space-y-1.5">

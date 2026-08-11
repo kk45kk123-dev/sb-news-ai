@@ -1,7 +1,7 @@
 import { applyCategoryNameOverrides } from "@/data/categories";
 import { apiFetch } from "@/lib/api/http";
 import { dashboardStatsSchema, pipelineStepSchema, type DashboardStats, type PipelineStep } from "@/lib/schemas/admin.schema";
-import { newsListParamsSchema, type NewsListParams, type NewsListResponse, type News } from "@/lib/schemas/news.schema";
+import { newsListParamsSchema, type NewsListParams, type NewsListResponse, type News, type GlossaryTerm } from "@/lib/schemas/news.schema";
 import { orgSettingsSchema, type OrgSettings, type OrgSettingsPatch } from "@/lib/schemas/settings.schema";
 
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
@@ -36,6 +36,7 @@ export interface UpdateNewsPatch {
   keywords?: string[];
   body?: string;
   imageUrl?: string | null;
+  glossary?: GlossaryTerm[];
 }
 
 export async function updateNews(id: string, patch: UpdateNewsPatch): Promise<News | null> {
