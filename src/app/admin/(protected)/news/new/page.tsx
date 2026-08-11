@@ -141,6 +141,7 @@ export default function AdminNewsIngestPage() {
           categoryId: draft.analysis.categoryId,
           summaryBullets: draft.analysis.summaryBullets,
           keywords: draft.analysis.keywords,
+          glossary: draft.analysis.glossary,
           body: draft.body,
           sourceUrl: draft.sourceUrl,
           imageUrl: imageUrl.trim() === "" ? null : imageUrl.trim(),
@@ -311,6 +312,23 @@ export default function AdminNewsIngestPage() {
                     </span>
                   ))}
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>용어 설명 (AI 자동 추출)</Label>
+                {draft.analysis.glossary.length > 0 ? (
+                  <ul className="space-y-1.5 rounded-lg bg-muted/50 p-3">
+                    {draft.analysis.glossary.map((g) => (
+                      <li key={g.term} className="text-xs leading-relaxed text-muted-foreground">
+                        <span className="font-semibold text-foreground">{g.term}</span> — {g.definition}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    이 기사에서는 별도로 설명이 필요한 전문용어를 찾지 못했습니다.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">

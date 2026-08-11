@@ -3,8 +3,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { CATEGORIES } from "@/data/categories";
 import { ingestAnalyzeRequestSchema, ingestAnalyzeOutputSchema } from "@/lib/schemas/ingest.schema";
 import { extractArticleFromUrl, ArticleExtractionError } from "@/server/ingest/extract-article";
+import { findExistingArticleIdByUrl } from "@/server/services/manual-publish.service";
 import { callAnthropic } from "@/server/ai/providers/anthropic.provider";
 import { extractJson } from "@/server/ai/json-extract";
+import { isAiBudgetExceeded } from "@/server/ai/budget";
+import { recordAiCallLog } from "@/server/repositories/ai-call-log.repository";
 import { getAuthContext, hasRole, verifyCsrf } from "@/server/auth/guard";
 import { checkRateLimit } from "@/server/auth/rate-limit";
 
@@ -30,7 +33,8 @@ function buildSystemPrompt(): string {
   "summaryBullets": ["요약 문장 1", "요약 문장 2", "요약 문장 3"],
   "categoryId": "아래 카테고리 목록 중 하나의 id",
   "keywords": ["핵심 키워드 3~6개"],
-  "tags": ["짧은 태그 2~4개"]
+  "tags": ["짧은 태그 2~4개"],
+  "glossary": [{"term": "용어", "definition": "쉬운 설명 (한두 문장)"}]
 }
 
 카테고리 목록:
@@ -41,7 +45,12 @@ ${categoryList}
 - summaryBullets: 정확히 3개의 완결된 한국어 문장. 각 문장은 본문의 핵심 사실을 담아야 합니다.
 - categoryId: 반드시 위 목록의 id 중 하나를 정확히 그대로 사용하세요.
 - keywords: 본문에 실제로 등장하는 고유명사/용어 위주.
-- tags: keywords보다 짧고 일반적인 분류어.`;
+- tags: keywords보다 짧고 일반적인 분류어.
+- glossary: 기사에 실제로 등장하는 금융·경제·부동산·세제·규제 전문용어 중, 배경지식 없이는
+  이해하기 어려울 가능성이 높은 핵심 용어만 최대 5개까지 뽑으세요. 저축은행 업계 용어로
+  국한하지 말고 본문에 실제로 나온 전문용어를 뽑으세요. 용어당 한두 문장으로 간결하게
+  설명하세요. "은행", "대출", "이자", "세금"처럼 이미 널리 알려진 일반 용어는 넣지 마세요.
+  전문용어가 하나도 없는 기사는 드뭅니다 — 정말 없을 때만 빈 배열로 두세요.`;
 }
 
 function buildUserPrompt(body: string, titleHint: string | null): string {
@@ -69,6 +78,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // 이 라우트도 실제 Claude 호출을 하므로(AI Gateway를 거치지 않는 예외 경로,
+  // ADR-007 참고) RSS 자동수집 파이프라인과 같은 일일 예산 상한을 똑같이 적용한다.
+  if (await isAiBudgetExceeded()) {
+    return NextResponse.json({ error: "오늘 AI 처리 한도에 도달했습니다. 내일 다시 시도해 주세요." }, { status: 429 });
+  }
+
   let payload: unknown;
   try {
     payload = await req.json();
@@ -86,6 +101,18 @@ export async function POST(req: NextRequest) {
   let extractedTitle: string | null = null;
   let extractedImageUrl: string | null = null;
   const sourceUrl = input.mode === "url" ? input.url! : null;
+
+  // URL이 이미 RSS 자동수집 등으로 들어와 있으면, 게시 단계에서 결국 막힐 걸
+  // 미리 걸러 AI 분석 비용을 낭비하지 않는다.
+  if (sourceUrl) {
+    const existingArticleId = await findExistingArticleIdByUrl(sourceUrl);
+    if (existingArticleId) {
+      return NextResponse.json(
+        { error: "이미 등록된 기사입니다 (자동 수집되었거나 이전에 등록됨). 뉴스 관리에서 확인해주세요." },
+        { status: 409 }
+      );
+    }
+  }
 
   if (input.mode === "url") {
     try {
@@ -121,8 +148,24 @@ export async function POST(req: NextRequest) {
       const validated = ingestAnalyzeOutputSchema.safeParse(parsedJson);
       if (!validated.success) {
         lastError = "AI 응답 형식이 올바르지 않습니다.";
+        await recordAiCallLog({
+          taskType: "analyze",
+          tokenInput: result.tokenInput,
+          tokenOutput: result.tokenOutput,
+          latencyMs,
+          status: "error",
+          error: `schema validation failed (attempt ${attempt}): ${validated.error.message}`,
+        });
         continue;
       }
+
+      await recordAiCallLog({
+        taskType: "analyze",
+        tokenInput: result.tokenInput,
+        tokenOutput: result.tokenOutput,
+        latencyMs,
+        status: "success",
+      });
 
       return NextResponse.json({
         analysis: validated.data,
@@ -145,6 +188,11 @@ export async function POST(req: NextRequest) {
       } else {
         lastError = "AI 분석 요청 중 오류가 발생했습니다.";
       }
+      await recordAiCallLog({
+        taskType: "analyze",
+        status: "error",
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 

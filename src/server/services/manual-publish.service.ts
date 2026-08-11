@@ -26,6 +26,8 @@ export interface PublishManualArticleInput {
   body: string;
   sourceUrl: string | null;
   imageUrl?: string | null;
+  /** RSS 자동수집 분석과 동일한 {term, definition} 모양 — analysis.glossary에 그대로 저장된다. */
+  glossary?: { term: string; definition: string }[];
   modelKey: string;
   tokenInput: number;
   tokenOutput: number;
@@ -41,6 +43,18 @@ const MANUAL_PROMPT_NAME = "manual-ingest";
 function computeUrlHash(input: Pick<PublishManualArticleInput, "sourceUrl" | "body">): string {
   if (input.sourceUrl) return hashUrl(input.sourceUrl);
   return createHash("sha256").update(`manual-text:${input.body}`).digest("hex");
+}
+
+/**
+ * URL이 이미 수집/게시된 기사인지 AI 분석 호출 전에 미리 확인한다 — RSS 자동수집이
+ * 먼저 가져간 URL을 관리자가 몰라서 다시 "AI 분석 시작"을 누르면, 어차피 게시 단계
+ * (publishManualArticle)에서 DuplicateArticleError로 막힐 걸 AI 호출부터 낭비하게
+ * 된다. hashUrl은 RSS 수집기와 동일한 정규화 로직을 쓰므로 같은 URL이면 경로와
+ * 무관하게 항상 같은 해시가 나온다.
+ */
+export async function findExistingArticleIdByUrl(url: string): Promise<string | null> {
+  const existing = await prisma.article.findUnique({ where: { urlHash: hashUrl(url) }, select: { id: true } });
+  return existing?.id ?? null;
 }
 
 async function findOrCreateManualSource(orgId: string) {
@@ -161,6 +175,7 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
           risks: [],
           actionIdeas: [],
           evidence: [],
+          glossary: input.glossary ?? [],
           confidence: "low",
           promptVersionId: promptVersion.id,
           modelId: model.id,

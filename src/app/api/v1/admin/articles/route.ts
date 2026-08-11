@@ -6,6 +6,7 @@ import { getAuthContext, hasRole, verifyCsrf } from "@/server/auth/guard";
 import { recordAudit } from "@/server/services/audit.service";
 import { publishManualArticle, DuplicateArticleError } from "@/server/services/manual-publish.service";
 import { getOrgSettings } from "@/server/services/settings.service";
+import { glossaryTermSchema } from "@/lib/schemas/news.schema";
 
 const publishRequestSchema = z.object({
   title: z.string().min(1),
@@ -15,6 +16,7 @@ const publishRequestSchema = z.object({
   body: z.string().min(1),
   sourceUrl: z.string().url().nullable(),
   imageUrl: z.string().url().nullable().optional(),
+  glossary: z.array(glossaryTermSchema).max(5).optional(),
   modelKey: z.string().min(1),
   tokenInput: z.number().int().nonnegative(),
   tokenOutput: z.number().int().nonnegative(),

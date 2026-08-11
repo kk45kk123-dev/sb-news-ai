@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORIES } from "@/data/categories";
+import { glossaryTermSchema } from "@/lib/schemas/news.schema";
 
 const CATEGORY_IDS = CATEGORIES.map((c) => c.id) as [string, ...string[]];
 
@@ -22,13 +23,19 @@ export const ingestAnalyzeRequestSchema = z
   );
 export type IngestAnalyzeRequest = z.infer<typeof ingestAnalyzeRequestSchema>;
 
-/** Claude's structured output for one article. */
+/**
+ * Claude's structured output for one article. glossary는 RSS 자동수집 분석
+ * (server/ai/schemas/analyze.schema.ts)과 같은 {term, definition} 모양을
+ * 그대로 재사용한다 — 입력 경로가 달라도 저장/화면 표시 레이어가 동일하게
+ * 동작하도록 하기 위함이다 (§금융·경제 용어 기능 통합).
+ */
 export const ingestAnalyzeOutputSchema = z.object({
   title: z.string().min(5),
   summaryBullets: z.array(z.string().min(1)).length(3),
   categoryId: z.enum(CATEGORY_IDS),
   keywords: z.array(z.string().min(1)).min(3).max(6),
   tags: z.array(z.string().min(1)).min(2).max(4),
+  glossary: z.array(glossaryTermSchema).max(5).default([]),
 });
 export type IngestAnalyzeOutput = z.infer<typeof ingestAnalyzeOutputSchema>;
 
@@ -38,6 +45,7 @@ export const ingestAnalyzeResponseSchema = z.object({
   body: z.string(),
   sourceUrl: z.string().nullable(),
   extractedTitle: z.string().nullable(),
+  extractedImageUrl: z.string().nullable(),
   modelKey: z.string(),
   tokenInput: z.number(),
   tokenOutput: z.number(),
