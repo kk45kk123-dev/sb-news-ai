@@ -13,7 +13,6 @@ import type { NewsListParams } from "@/lib/schemas/news.schema";
 const SORT_TABS: { value: NewsListParams["sort"]; label: string }[] = [
   { value: "latest", label: "최신순" },
   { value: "views", label: "조회수순" },
-  { value: "impact", label: "영향도순" },
 ];
 
 export default function NewsListPage() {
