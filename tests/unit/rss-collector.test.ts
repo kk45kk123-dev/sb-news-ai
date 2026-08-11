@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { RssCollector } from "@/server/collectors/rss.collector";
+
+// rss.collector.ts는 fetch 직전에 SSRF 가드(server/ingest/ssrf-guard.ts)가 실제 DNS
+// lookup을 수행한다 — 이 테스트의 fake .test 도메인은 실제로 resolve되지 않으므로,
+// "공개 IP로 정상 resolve됨"을 가정하고 RSS 파싱 로직만 검증하도록 DNS를 목킹한다.
+// (dns.lookup의 오버로드 타입이 vi.mocked()로는 잘 안 잡혀서, 참조를 직접 export해 쓴다.)
+const mockDnsLookup = vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+vi.mock("node:dns/promises", () => ({ default: { lookup: mockDnsLookup }, lookup: mockDnsLookup }));
+
+const { RssCollector } = await import("@/server/collectors/rss.collector");
 
 const FIXTURES_DIR = path.resolve(__dirname, "../fixtures/rss");
 
@@ -68,5 +76,14 @@ describe("RssCollector", () => {
       vi.fn().mockResolvedValue({ ok: false, status: 503, headers: new Headers() })
     );
     await expect(new RssCollector().collect(source)).rejects.toThrow(/503/);
+  });
+
+  it("출처 URL이 내부망 IP로 resolve되면 SSRF 가드가 fetch 자체를 막는다", async () => {
+    mockDnsLookup.mockResolvedValueOnce([{ address: "169.254.169.254", family: 4 }]);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await expect(new RssCollector().collect(source)).rejects.toThrow(/RSS fetch blocked/);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
