@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { SplashScreen } from "@/components/layout/splash-screen";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://sb-news-ai.example"),
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="font-sans antialiased">
+        <SplashScreen />
         <Providers>{children}</Providers>
       </body>
     </html>
