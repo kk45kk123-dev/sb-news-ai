@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PipelineStepper } from "@/components/admin/pipeline-stepper";
 import { NewsThumbnail } from "@/components/news/news-thumbnail";
 import { CategoryBadge } from "@/components/news/category-badge";
+import { AiImportance } from "@/components/news/ai-importance";
 
 type Phase = "input" | "running" | "review" | "done";
 
@@ -142,6 +143,7 @@ export default function AdminNewsIngestPage() {
           summaryBullets: draft.analysis.summaryBullets,
           keywords: draft.analysis.keywords,
           glossary: draft.analysis.glossary,
+          importance: draft.analysis.importance,
           body: draft.body,
           sourceUrl: draft.sourceUrl,
           imageUrl: imageUrl.trim() === "" ? null : imageUrl.trim(),
@@ -377,7 +379,10 @@ export default function AdminNewsIngestPage() {
                 className="aspect-[16/9] w-full"
               />
               <h3 className="text-base font-bold leading-snug">{draft.analysis.title}</h3>
-              <CategoryBadge categoryId={draft.analysis.categoryId} />
+              <div className="flex items-center gap-2">
+                <CategoryBadge categoryId={draft.analysis.categoryId} />
+                <AiImportance score={draft.analysis.importance} />
+              </div>
               <p className="text-xs text-muted-foreground">
                 {draft.sourceUrl ? "외부 링크" : "직접 등록"} · {categories.find((c) => c.id === draft.analysis.categoryId)?.name}
               </p>

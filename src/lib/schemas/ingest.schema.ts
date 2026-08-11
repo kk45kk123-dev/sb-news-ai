@@ -36,6 +36,9 @@ export const ingestAnalyzeOutputSchema = z.object({
   keywords: z.array(z.string().min(1)).min(3).max(6),
   tags: z.array(z.string().min(1)).min(2).max(4),
   glossary: z.array(glossaryTermSchema).max(5).default([]),
+  /** 전체 금융권 관점 중요도(1-5) — RSS 자동수집 분석과 같은 기준. 이전에는 이
+   *  경로에서 AI에게 물어보지도 않고 3으로 고정했었다. */
+  importance: z.number().int().min(1).max(5).default(3),
 });
 export type IngestAnalyzeOutput = z.infer<typeof ingestAnalyzeOutputSchema>;
 
