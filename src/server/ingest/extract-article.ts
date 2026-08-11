@@ -16,6 +16,26 @@ export interface ExtractedArticle {
   /** Plain text, paragraphs separated by blank lines — ready to hand to Claude or store as News.body. */
   text: string;
   byline: string | null;
+  /** og:image/twitter:image meta tag, resolved to an absolute URL — null if the page has neither. */
+  imageUrl: string | null;
+}
+
+/**
+ * 거의 모든 뉴스 사이트가 소셜 공유 미리보기용으로 넣는 og:image(없으면
+ * twitter:image)를 대표 이미지로 재사용한다. Readability가 본문만 남기고
+ * <head>를 건드릴 수 있어, 파싱 전에 원본 document에서 먼저 읽어야 한다.
+ */
+function extractOgImage(document: Document, pageUrl: string): string | null {
+  const raw =
+    document.querySelector('meta[property="og:image"]')?.getAttribute("content") ??
+    document.querySelector('meta[name="twitter:image"]')?.getAttribute("content");
+  if (!raw) return null;
+  try {
+    const resolved = new URL(raw, pageUrl);
+    return resolved.protocol === "http:" || resolved.protocol === "https:" ? resolved.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -94,6 +114,7 @@ export async function extractArticleFromUrl(url: string): Promise<ExtractedArtic
   }
 
   const { document } = parseHTML(html, res.url || url);
+  const imageUrl = extractOgImage(document as unknown as Document, res.url || url);
   const parsed = new Readability(document as unknown as Document).parse();
 
   if (!parsed || !parsed.textContent || parsed.textContent.trim().length < 30) {
@@ -104,5 +125,6 @@ export async function extractArticleFromUrl(url: string): Promise<ExtractedArtic
     title: parsed.title?.trim() || null,
     text: parsed.textContent.trim().replace(/\n{3,}/g, "\n\n"),
     byline: parsed.byline?.trim() || null,
+    imageUrl,
   };
 }

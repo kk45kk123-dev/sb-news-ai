@@ -81,6 +81,7 @@ export default function AdminNewsIngestPage() {
         analysis?: unknown;
         body?: string;
         sourceUrl?: string | null;
+        extractedImageUrl?: string | null;
         modelKey?: string;
         tokenInput?: number;
         tokenOutput?: number;
@@ -114,6 +115,10 @@ export default function AdminNewsIngestPage() {
         tokenOutput: body.tokenOutput ?? 0,
         latencyMs: body.latencyMs ?? 0,
       });
+      // URL 모드면 페이지의 og:image를 자동으로 채워준다 — 원문 붙여넣기 모드는
+      // 스크랩할 페이지가 없어 대표 이미지를 알아낼 방법이 없다. 어느 쪽이든
+      // 검토 단계에서 관리자가 직접 수정/삭제할 수 있다.
+      setImageUrl(body.extractedImageUrl ?? "");
       setPhase("review");
     } catch (e) {
       const message = e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.";
@@ -316,7 +321,11 @@ export default function AdminNewsIngestPage() {
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">비워두면 카테고리 색상의 기본 썸네일이 표시됩니다.</p>
+                <p className="text-xs text-muted-foreground">
+                  {draft.sourceUrl && imageUrl
+                    ? "원문 페이지에서 자동으로 찾아 채웠습니다. 필요하면 수정하거나 비워두세요."
+                    : "비워두면 카테고리 색상의 기본 썸네일이 표시됩니다."}
+                </p>
               </div>
 
               <div className="space-y-1.5">

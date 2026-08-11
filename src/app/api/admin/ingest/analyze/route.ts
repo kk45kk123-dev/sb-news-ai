@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
 
   let body: string;
   let extractedTitle: string | null = null;
+  let extractedImageUrl: string | null = null;
   const sourceUrl = input.mode === "url" ? input.url! : null;
 
   if (input.mode === "url") {
@@ -91,6 +92,7 @@ export async function POST(req: NextRequest) {
       const extracted = await extractArticleFromUrl(input.url!);
       body = extracted.text;
       extractedTitle = extracted.title;
+      extractedImageUrl = extracted.imageUrl;
     } catch (e) {
       const message = e instanceof ArticleExtractionError ? e.message : "본문 추출 중 오류가 발생했습니다.";
       return NextResponse.json({ error: message }, { status: 422 });
@@ -127,6 +129,7 @@ export async function POST(req: NextRequest) {
         body,
         sourceUrl,
         extractedTitle,
+        extractedImageUrl,
         modelKey: MODEL_KEY,
         tokenInput: result.tokenInput,
         tokenOutput: result.tokenOutput,
