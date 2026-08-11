@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NewsThumbnail } from "@/components/news/news-thumbnail";
 
 export default function AdminNewsEditPage() {
   const params = useParams<{ id: string }>();
@@ -52,6 +53,7 @@ function EditForm({ news }: { news: News }) {
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<NewsEditFormInput>({
     resolver: zodResolver(newsEditFormSchema),
@@ -64,8 +66,11 @@ function EditForm({ news }: { news: News }) {
       summaryLine3: news.summaryBullets[2] ?? "",
       keywords: news.keywords.join(", "),
       body: news.body,
+      imageUrl: news.imageUrl ?? "",
     },
   });
+
+  const imageUrlValue = watch("imageUrl");
 
   async function onSubmit(values: NewsEditFormInput) {
     updateMutation.mutate(
@@ -78,6 +83,7 @@ function EditForm({ news }: { news: News }) {
           summaryBullets: [values.summaryLine1, values.summaryLine2, values.summaryLine3],
           keywords: values.keywords.split(",").map((k) => k.trim()).filter(Boolean),
           body: values.body,
+          imageUrl: values.imageUrl.trim() === "" ? null : values.imageUrl.trim(),
         },
       },
       {
@@ -111,6 +117,19 @@ function EditForm({ news }: { news: News }) {
               <Label htmlFor="title">제목</Label>
               <Input id="title" {...register("title")} />
               {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="imageUrl">대표 이미지 URL (선택)</Label>
+              <Input id="imageUrl" placeholder="https://example.com/image.jpg" {...register("imageUrl")} />
+              {errors.imageUrl && <p className="text-xs text-destructive">{errors.imageUrl.message}</p>}
+              <p className="text-xs text-muted-foreground">비워두면 카테고리 색상의 기본 썸네일이 표시됩니다.</p>
+              <NewsThumbnail
+                categoryId={news.categoryId}
+                gradient={news.thumbnailGradient}
+                imageUrl={imageUrlValue}
+                className="aspect-[16/9] w-full max-w-xs"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

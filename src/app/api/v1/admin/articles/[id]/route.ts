@@ -14,6 +14,7 @@ const patchSchema = z.object({
   summaryBullets: z.tuple([z.string().min(1), z.string().min(1), z.string().min(1)]).optional(),
   keywords: z.array(z.string().min(1)).min(1).optional(),
   body: z.string().min(30).optional(),
+  imageUrl: z.string().url().nullable().optional(),
 });
 
 /** Edits a manually-published article — same table the public site reads, so this reflects immediately. */

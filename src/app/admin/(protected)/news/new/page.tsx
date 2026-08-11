@@ -45,6 +45,7 @@ export default function AdminNewsIngestPage() {
   const [phase, setPhase] = React.useState<Phase>("input");
   const [steps, setSteps] = React.useState<PipelineStep[]>(createInitialPipelineSteps());
   const [draft, setDraft] = React.useState<DraftArticle | null>(null);
+  const [imageUrl, setImageUrl] = React.useState("");
   const [createdNews, setCreatedNews] = React.useState<News | null>(null);
   const [isPublishing, setIsPublishing] = React.useState(false);
 
@@ -137,6 +138,7 @@ export default function AdminNewsIngestPage() {
           keywords: draft.analysis.keywords,
           body: draft.body,
           sourceUrl: draft.sourceUrl,
+          imageUrl: imageUrl.trim() === "" ? null : imageUrl.trim(),
           modelKey: draft.modelKey,
           tokenInput: draft.tokenInput,
           tokenOutput: draft.tokenOutput,
@@ -176,6 +178,7 @@ export default function AdminNewsIngestPage() {
     setUrl("");
     setText("");
     setDraft(null);
+    setImageUrl("");
     setCreatedNews(null);
     setSteps(createInitialPipelineSteps());
   }
@@ -306,6 +309,17 @@ export default function AdminNewsIngestPage() {
               </div>
 
               <div className="space-y-1.5">
+                <Label htmlFor="image-url">대표 이미지 URL (선택)</Label>
+                <Input
+                  id="image-url"
+                  placeholder="https://example.com/image.jpg"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">비워두면 카테고리 색상의 기본 썸네일이 표시됩니다.</p>
+              </div>
+
+              <div className="space-y-1.5">
                 <Label>본문 미리보기</Label>
                 <p className="max-h-40 overflow-y-auto whitespace-pre-line rounded-lg border border-border p-3 text-xs leading-relaxed text-muted-foreground">
                   {draft.body}
@@ -332,6 +346,7 @@ export default function AdminNewsIngestPage() {
               <NewsThumbnail
                 categoryId={draft.analysis.categoryId}
                 gradient={getCategoryGradient(draft.analysis.categoryId)}
+                imageUrl={imageUrl}
                 className="aspect-[16/9] w-full"
               />
               <h3 className="text-base font-bold leading-snug">{draft.analysis.title}</h3>

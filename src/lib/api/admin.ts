@@ -35,6 +35,7 @@ export interface UpdateNewsPatch {
   summaryBullets?: [string, string, string];
   keywords?: string[];
   body?: string;
+  imageUrl?: string | null;
 }
 
 export async function updateNews(id: string, patch: UpdateNewsPatch): Promise<News | null> {

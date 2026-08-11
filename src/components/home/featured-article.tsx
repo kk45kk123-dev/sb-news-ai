@@ -16,7 +16,13 @@ export function FeaturedArticle({ item }: { item: News }) {
       href={`/news/${item.id}`}
       className="group grid overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-shadow duration-300 hover:shadow-card-hover sm:grid-cols-2"
     >
-      <NewsThumbnail categoryId={item.categoryId} gradient={item.thumbnailGradient} size="lg" className="aspect-[16/10] sm:aspect-auto sm:h-full" />
+      <NewsThumbnail
+        categoryId={item.categoryId}
+        gradient={item.thumbnailGradient}
+        imageUrl={item.imageUrl}
+        size="lg"
+        className="aspect-[16/10] sm:aspect-auto sm:h-full"
+      />
       <div className="flex flex-col gap-3 p-6">
         <div className="flex items-center gap-2">
           <Badge variant="accent" className="gap-1">

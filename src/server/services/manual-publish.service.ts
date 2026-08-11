@@ -25,6 +25,7 @@ export interface PublishManualArticleInput {
   keywords: string[];
   body: string;
   sourceUrl: string | null;
+  imageUrl?: string | null;
   modelKey: string;
   tokenInput: number;
   tokenOutput: number;
@@ -140,6 +141,7 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
           description: input.summaryBullets.join(" "),
           rawContent: input.body,
           publisher: input.sourceUrl ? new URL(input.sourceUrl).hostname : "관리자 직접 등록",
+          imageUrl: input.imageUrl ?? null,
           publishedAt: new Date(),
           pipelineStage: "analyzed",
           relevance: "relevant",

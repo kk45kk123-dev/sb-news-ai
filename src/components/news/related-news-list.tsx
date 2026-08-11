@@ -31,7 +31,12 @@ export function RelatedNewsList({ title, items, isLoading }: RelatedNewsListProp
                 href={`/news/${item.id}`}
                 className="group flex gap-4 rounded-xl border border-border bg-card p-4 shadow-soft transition-shadow duration-[220ms] ease-out hover:shadow-card-hover"
               >
-                <NewsThumbnail categoryId={item.categoryId} gradient={item.thumbnailGradient} className="h-20 w-24 shrink-0" />
+                <NewsThumbnail
+                  categoryId={item.categoryId}
+                  gradient={item.thumbnailGradient}
+                  imageUrl={item.imageUrl}
+                  className="h-20 w-24 shrink-0"
+                />
                 <div className="min-w-0 flex-1">
                   <CategoryBadge categoryId={item.categoryId} />
                   <p className="mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors duration-[220ms] group-hover:text-primary">

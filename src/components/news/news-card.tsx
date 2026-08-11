@@ -26,6 +26,7 @@ export function NewsCard({ item }: { item: News }) {
           <NewsThumbnail
             categoryId={item.categoryId}
             gradient={item.thumbnailGradient}
+            imageUrl={item.imageUrl}
             className="aspect-[16/9] w-full transition-transform duration-[220ms] ease-out group-hover:scale-[1.03]"
           />
         </div>

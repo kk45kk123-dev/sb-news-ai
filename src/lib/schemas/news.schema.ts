@@ -32,6 +32,7 @@ export const newsSchema = z.object({
   slug: z.string(),
   title: z.string(),
   thumbnailGradient: z.tuple([z.string(), z.string()]),
+  imageUrl: z.string().nullable().default(null),
   publisher: z.string(),
   reporter: z.string(),
   publishedAt: z.string(),
@@ -84,5 +85,6 @@ export const newsEditFormSchema = z.object({
   summaryLine3: z.string().min(1, { message: "요약을 입력해주세요." }),
   keywords: z.string().min(1, { message: "키워드를 1개 이상 입력해주세요." }),
   body: z.string().min(30, { message: "본문은 30자 이상 입력해주세요." }),
+  imageUrl: z.union([z.string().url({ message: "올바른 이미지 URL이 아닙니다." }), z.literal("")]),
 });
 export type NewsEditFormInput = z.infer<typeof newsEditFormSchema>;

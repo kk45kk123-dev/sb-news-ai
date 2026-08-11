@@ -294,6 +294,7 @@ export interface ManualArticlePatch {
   summaryBullets?: [string, string, string];
   keywords?: string[];
   body?: string;
+  imageUrl?: string | null;
 }
 
 /** Edit surface for admin-published (manual-ingest) articles — see manual-publish.service.ts. */
@@ -311,7 +312,8 @@ export async function updateManualArticle(
       patch.categoryId !== undefined ||
       patch.status !== undefined ||
       patch.scheduledAt !== undefined ||
-      patch.body !== undefined
+      patch.body !== undefined ||
+      patch.imageUrl !== undefined
     ) {
       await tx.article.update({
         where: { id },
@@ -323,6 +325,7 @@ export async function updateManualArticle(
             ? { scheduledAt: patch.scheduledAt ? new Date(patch.scheduledAt) : null }
             : {}),
           ...(patch.body !== undefined ? { rawContent: patch.body, description: patch.body.slice(0, 200) } : {}),
+          ...(patch.imageUrl !== undefined ? { imageUrl: patch.imageUrl } : {}),
         },
       });
     }

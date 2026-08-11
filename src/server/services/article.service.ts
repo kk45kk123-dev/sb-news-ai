@@ -41,6 +41,7 @@ export function toNewsDto(article: ArticleWithRelations): News {
     slug: article.id,
     title: article.title,
     thumbnailGradient: getCategoryGradient(categoryId),
+    imageUrl: article.imageUrl,
     publisher: article.publisher ?? "출처 미상",
     reporter: article.author ?? "관리자 등록",
     publishedAt: article.publishedAt.toISOString(),

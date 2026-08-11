@@ -107,7 +107,13 @@ export default function NewsDetailPage() {
       </button>
 
       <div>
-        <NewsThumbnail categoryId={news.categoryId} gradient={news.thumbnailGradient} size="lg" className="aspect-[2/1] w-full" />
+        <NewsThumbnail
+          categoryId={news.categoryId}
+          gradient={news.thumbnailGradient}
+          imageUrl={news.imageUrl}
+          size="lg"
+          className="aspect-[2/1] w-full"
+        />
 
         <div className="mt-5 flex items-center gap-2">
           <CategoryBadge categoryId={news.categoryId} />
