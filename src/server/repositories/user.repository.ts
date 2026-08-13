@@ -34,6 +34,27 @@ export async function findUserById(id: string): Promise<User | null> {
   return prisma.user.findUnique({ where: { id } });
 }
 
+/** org 경계를 넘어서 다른 조직 사용자를 건드리지 못하도록 orgId까지 함께 확인한다. */
+export async function findOrgUserById(id: string, orgId: string): Promise<User | null> {
+  return prisma.user.findFirst({ where: { id, orgId } });
+}
+
+export async function countActiveAdmins(orgId: string): Promise<number> {
+  return prisma.user.count({ where: { orgId, role: "admin", isActive: true } });
+}
+
+export async function setUserActive(id: string, orgId: string, isActive: boolean): Promise<User | null> {
+  const result = await prisma.user.updateMany({ where: { id, orgId }, data: { isActive } });
+  if (result.count === 0) return null;
+  return prisma.user.findUnique({ where: { id } });
+}
+
+export async function setUserRole(id: string, orgId: string, role: UserRole): Promise<User | null> {
+  const result = await prisma.user.updateMany({ where: { id, orgId }, data: { role } });
+  if (result.count === 0) return null;
+  return prisma.user.findUnique({ where: { id } });
+}
+
 export async function updateLastLogin(id: string): Promise<void> {
   await prisma.user.update({ where: { id }, data: { lastLoginAt: new Date() } });
 }

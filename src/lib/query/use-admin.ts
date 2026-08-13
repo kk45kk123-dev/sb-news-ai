@@ -82,3 +82,11 @@ export function useMarkAllNotificationsReadMutation() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.notifications() }),
   });
 }
+
+export function useUpdateOrgUserMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; patch: adminApi.UpdateUserPatch }) => adminApi.updateOrgUser(vars.id, vars.patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+}

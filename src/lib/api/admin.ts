@@ -146,3 +146,17 @@ export async function markAllNotificationsRead(): Promise<void> {
     headers: { "x-csrf-token": getCsrfToken() ?? "" },
   });
 }
+
+// ---- 사용자 관리 ----------------------------------------------------------
+
+export interface UpdateUserPatch {
+  isActive?: boolean;
+  role?: "admin" | "viewer";
+}
+
+export async function updateOrgUser(id: string, patch: UpdateUserPatch): Promise<{ id: string; isActive: boolean; role: string }> {
+  return apiFetch(`/api/v1/admin/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
