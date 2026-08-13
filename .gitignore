@@ -29,3 +29,8 @@ next-env.d.ts
 
 # local redis-server dump (this container runs redis-server directly for dev/testing)
 dump.rdb
+
+# playwright e2e
+test-results/
+playwright-report/
+blob-report/
