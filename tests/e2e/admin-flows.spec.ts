@@ -37,9 +37,8 @@ test.describe("관리자 핵심 흐름", () => {
 
   test("기사 등록 화면에서 유효하지 않은 API 키로 AI 분석 시 사용자에게 명확한 오류가 표시된다", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto("/admin/news/new");
-    const textModeTab = page.getByRole("tab", { name: /원문/ }).or(page.locator("button", { hasText: "원문" }));
-    if (await textModeTab.count()) await textModeTab.first().click();
+    await page.goto("/admin/news/new", { waitUntil: "networkidle" });
+    await page.getByRole("tab", { name: /원문/ }).click();
 
     await page.locator("textarea").first().fill(
       "E2E 테스트를 위한 30자 이상의 임의 원문 텍스트입니다. AI 분석 버튼을 눌렀을 때 오류 처리를 확인합니다."

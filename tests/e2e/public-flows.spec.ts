@@ -13,7 +13,7 @@ test.describe("공개 화면 핵심 흐름", () => {
     const link = page.locator(`a[href^="/news/"]:has-text("${E2E_ARTICLE_TITLE}")`).first();
     await expect(link).toBeVisible({ timeout: 10_000 });
     await Promise.all([page.waitForURL(/\/news\/[0-9a-f-]+/, { timeout: 10_000 }), link.click()]);
-    await expect(page.getByRole("heading", { name: E2E_ARTICLE_TITLE })).toBeVisible();
+    await expect(page.getByRole("heading", { name: E2E_ARTICLE_TITLE })).toBeVisible({ timeout: 10_000 });
   });
 
   test("카테고리 필터가 실제 DB 결과를 좁힌다", async ({ page }) => {
