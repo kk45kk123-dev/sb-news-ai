@@ -106,6 +106,36 @@ export type ArticleWithRelations = Prisma.ArticleGetPayload<{ include: typeof ar
  * 규모(일 50~100건, §17.1)에서는 충분하지만, 전역적으로 올바른 커서 기반 정렬은 아니다 —
  * 트래픽이 커지면 정렬 키를 컬럼으로 역정규화하는 걸 재검토해야 한다.
  */
+// pg_trgm word_similarity 임계치. similarity()는 짧은 검색어 vs 긴 제목/본문
+// 비교에서 전체 문자열 길이에 묻혀 점수가 비정상적으로 낮게 나온다(실측:
+// "기준금니"(오타) vs "한국은행 기준금리 동결 발표" → similarity 0.17,
+// word_similarity 0.6) — word_similarity는 검색어가 대상 텍스트 "안의 한
+// 구간"과 얼마나 비슷한지를 보는 함수라 검색 용도에 맞다. 완전 무관한 문자열은
+// word_similarity도 0에 가까워 노이즈가 크게 늘지 않는다(실측 확인).
+//
+// 마이그레이션에 이미 idx_articles_title_bigm/idx_articles_desc_bigm
+// (gin_trgm_ops) 인덱스가 있었지만, 지금까지는 아무 쿼리도 트라이그램 함수를
+// 쓰지 않아 인덱스가 놀고 있었다 — 완전 부분일치(contains)만으로는
+// "기준금니"처럼 한 글자만 틀려도 검색이 아예 안 됐다.
+const SEARCH_WORD_SIMILARITY_THRESHOLD = 0.45;
+const SEARCH_SIMILARITY_CANDIDATE_LIMIT = 300;
+
+/** contains(완전 부분일치)로 못 찾는 오타·근사 매칭 기사 id를 유사도 순으로 보충한다. */
+async function findSimilarArticleIds(orgId: string, q: string, dateFrom: Date, dateTo: Date): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM articles
+    WHERE org_id = ${orgId}::uuid
+      AND published_at BETWEEN ${dateFrom} AND ${dateTo}
+      AND (
+        word_similarity(${q}, title) > ${SEARCH_WORD_SIMILARITY_THRESHOLD}
+        OR word_similarity(${q}, coalesce(description, '')) > ${SEARCH_WORD_SIMILARITY_THRESHOLD}
+      )
+    ORDER BY GREATEST(word_similarity(${q}, title), word_similarity(${q}, coalesce(description, ''))) DESC
+    LIMIT ${SEARCH_SIMILARITY_CANDIDATE_LIMIT}
+  `;
+  return rows.map((r) => r.id);
+}
+
 export async function listArticles(
   filters: ListArticlesFilters
 ): Promise<{ items: ArticleWithRelations[]; total: number }> {
@@ -115,9 +145,11 @@ export async function listArticles(
   };
 
   if (filters.q) {
+    const similarIds = await findSimilarArticleIds(filters.orgId, filters.q, filters.dateFrom, filters.dateTo);
     where.OR = [
       { title: { contains: filters.q, mode: "insensitive" } },
       { description: { contains: filters.q, mode: "insensitive" } },
+      ...(similarIds.length ? [{ id: { in: similarIds } }] : []),
     ];
   }
   if (filters.categorySlugs?.length) {
