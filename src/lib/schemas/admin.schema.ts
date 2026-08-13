@@ -37,3 +37,20 @@ export const dashboardStatsSchema = z.object({
   ),
 });
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
+
+export const notificationSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  body: z.string().nullable(),
+  link: z.string().nullable(),
+  isRead: z.boolean(),
+  createdAt: z.string(),
+});
+export type Notification = z.infer<typeof notificationSchema>;
+
+export const notificationListResponseSchema = z.object({
+  items: z.array(notificationSchema),
+  unreadCount: z.number().int(),
+});
+export type NotificationListResponse = z.infer<typeof notificationListResponseSchema>;

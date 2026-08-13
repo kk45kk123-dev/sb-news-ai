@@ -1,6 +1,14 @@
 import { applyCategoryNameOverrides } from "@/data/categories";
 import { apiFetch } from "@/lib/api/http";
-import { dashboardStatsSchema, pipelineStepSchema, type DashboardStats, type PipelineStep } from "@/lib/schemas/admin.schema";
+import { getCsrfToken } from "@/lib/csrf-client";
+import {
+  dashboardStatsSchema,
+  pipelineStepSchema,
+  notificationListResponseSchema,
+  type DashboardStats,
+  type PipelineStep,
+  type NotificationListResponse,
+} from "@/lib/schemas/admin.schema";
 import { newsListParamsSchema, type NewsListParams, type NewsListResponse, type News, type GlossaryTerm } from "@/lib/schemas/news.schema";
 import { orgSettingsSchema, type OrgSettings, type OrgSettingsPatch } from "@/lib/schemas/settings.schema";
 
@@ -123,4 +131,18 @@ export async function updateSettings(patch: OrgSettingsPatch): Promise<OrgSettin
     body: JSON.stringify(patch),
   });
   return orgSettingsSchema.parse(data);
+}
+
+// ---- 알림함 ---------------------------------------------------------------
+
+export async function getNotifications(): Promise<NotificationListResponse> {
+  const data = await apiFetch<unknown>("/api/v1/admin/notifications");
+  return notificationListResponseSchema.parse(data);
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await apiFetch("/api/v1/admin/notifications", {
+    method: "POST",
+    headers: { "x-csrf-token": getCsrfToken() ?? "" },
+  });
 }

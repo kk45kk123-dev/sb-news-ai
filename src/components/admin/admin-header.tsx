@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
+import { NotificationBell } from "@/components/admin/notification-bell";
 
 const ROLE_LABEL: Record<string, string> = { admin: "관리자", viewer: "일반회원" };
 
@@ -36,6 +37,7 @@ export function AdminHeader() {
           <ExternalLink className="h-3.5 w-3.5" /> 사이트 보기
         </Link>
       </Button>
+      <NotificationBell />
       <ThemeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

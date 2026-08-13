@@ -3,10 +3,26 @@ import { listDueSources } from "@/server/repositories/source.repository";
 import { findArticlesByPipelineStages } from "@/server/repositories/article.repository";
 import { isAiBudgetExceeded } from "@/server/ai/budget";
 import { redis } from "@/server/redis/client";
+import { findAdminUserIds } from "@/server/repositories/user.repository";
+import { createNotificationForUsers } from "@/server/repositories/notification.repository";
+import { getOrgSettings } from "@/server/services/settings.service";
 import { runCollectJob } from "./collect.job";
 import { runNormalizeJob } from "./normalize.job";
 import { runPurgeJob } from "./purge.job";
 import { runBriefingJob } from "./briefing.job";
+
+/** 설정 화면의 "이메일 알림"(주요 이벤트) 토글 — 지금은 실제 이메일 대신 관리자
+ *  인앱 알림함으로 전달한다. 알림 생성 실패가 파이프라인을 막으면 안 되므로 삼킨다. */
+async function notifyMajorEvent(orgId: string, title: string, body: string): Promise<void> {
+  try {
+    const settings = await getOrgSettings(orgId);
+    if (!settings.emailAlerts) return;
+    const adminIds = await findAdminUserIds(orgId);
+    await createNotificationForUsers(adminIds, { type: "pipeline_event", title, body, link: "/admin" });
+  } catch (e) {
+    console.error("[daily-pipeline] major-event notification failed", e);
+  }
+}
 
 // Vercel Cron 라우트의 maxDuration(60s, route.ts 참고)보다 여유를 둔 안전 한도.
 // 이 시간을 넘기면 새 작업을 시작하지 않고 정리 단계로 넘어간다 — 처리하지 못한
@@ -96,6 +112,11 @@ export async function runDailyPipeline(): Promise<DailyPipelineResult> {
       // 로직이 이어서 분석한다. 여기서 막는 건 분석/브리핑 등 AI 호출뿐이다.
       console.warn(
         `[daily-pipeline] AI 일일 호출 한도 도달 — 이번 실행은 신규 AI 분석/브리핑 생성을 건너뜁니다 (수집은 계속됨).`
+      );
+      await notifyMajorEvent(
+        DEFAULT_ORG_ID,
+        "AI 일일 호출 한도 도달",
+        "오늘 AI 분석/브리핑 생성이 한도 초과로 건너뛰어졌습니다. 수집된 기사는 내일 한도가 초기화되면 이어서 분석됩니다."
       );
     }
 

@@ -66,3 +66,19 @@ export function useUpdateSettingsMutation() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.settings() }),
   });
 }
+
+export function useNotificationsQuery() {
+  return useQuery({
+    queryKey: queryKeys.admin.notifications(),
+    queryFn: () => adminApi.getNotifications(),
+    refetchInterval: 60_000, // 별도 push 인프라가 없어 1분 폴링으로 "실시간에 가깝게" 반영
+  });
+}
+
+export function useMarkAllNotificationsReadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => adminApi.markAllNotificationsRead(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.notifications() }),
+  });
+}

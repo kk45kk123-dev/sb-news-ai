@@ -2,9 +2,34 @@ import { getCollector } from "@/server/collectors/registry";
 import { findSourceById, updateSourceStatus } from "@/server/repositories/source.repository";
 import { createArticleIfNew } from "@/server/repositories/article.repository";
 import { recordCrawlLog } from "@/server/repositories/crawl-log.repository";
+import { findAdminUserIds } from "@/server/repositories/user.repository";
+import { createNotificationForUsers } from "@/server/repositories/notification.repository";
+import { getOrgSettings } from "@/server/services/settings.service";
 import { runNormalizeJob } from "./normalize.job";
 import { SOURCE_MAX_CONSECUTIVE_FAILURES } from "./constants";
 import type { CollectJobData } from "./types";
+
+/**
+ * 관리자 설정의 "스크랩 실패 알림" 토글이 켜져 있으면, 이 출처 담당 org의 관리자
+ * 전원에게 인앱 알림(Notification 테이블 — 지금까지 스키마만 있고 아무도 쓰지 않았다)
+ * 을 남긴다. 알림 자체가 실패해도 수집 파이프라인을 막으면 안 되므로 별도로 삼킨다.
+ */
+async function notifyScrapFailure(orgId: string, sourceName: string, errorMessage: string): Promise<void> {
+  try {
+    const settings = await getOrgSettings(orgId);
+    if (!settings.scrapAlerts) return;
+
+    const adminIds = await findAdminUserIds(orgId);
+    await createNotificationForUsers(adminIds, {
+      type: "scrap_failure",
+      title: `"${sourceName}" 출처 수집 실패`,
+      body: errorMessage.slice(0, 300),
+      link: "/admin/sources",
+    });
+  } catch (e) {
+    console.error("[collect] scrap failure notification failed", e);
+  }
+}
 
 /**
  * 출처 하나를 수집한다. 이 함수 내부에서 발생한 에러는 이 출처의 실패로만 처리되고
@@ -76,6 +101,7 @@ export async function runCollectJob(data: CollectJobData): Promise<CollectJobRes
       failures >= SOURCE_MAX_CONSECUTIVE_FAILURES ? "error" : source.status,
       failures
     );
+    await notifyScrapFailure(source.orgId, source.name, e instanceof Error ? e.message : String(e));
     throw e; // 호출부(run-daily-pipeline.ts)가 출처별로 격리해서 처리하도록 다시 던진다
   }
 }

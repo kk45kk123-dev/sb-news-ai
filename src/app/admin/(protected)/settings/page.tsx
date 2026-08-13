@@ -111,7 +111,7 @@ export default function AdminSettingsPage() {
             <Switch checked={draft.scrapAlerts} onCheckedChange={(v) => patch({ scrapAlerts: v })} />
           </div>
           <p className="text-xs text-muted-foreground">
-            ※ 위 두 설정값은 저장되어 다음 알림 연동 작업에 그대로 반영되지만, 이메일 발송 자체는 아직 연결되어 있지 않아 지금은 실제 알림이 전송되지 않습니다.
+            ※ 이메일 발송은 아직 연결되어 있지 않아, 두 알림 모두 지금은 화면 상단의 알림함(🔔)으로 전달됩니다.
           </p>
         </CardContent>
       </Card>
