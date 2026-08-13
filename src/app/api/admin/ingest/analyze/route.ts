@@ -35,7 +35,9 @@ function buildSystemPrompt(): string {
   "keywords": ["핵심 키워드 3~6개"],
   "tags": ["짧은 태그 2~4개"],
   "glossary": [{"term": "용어", "definition": "쉬운 설명 (한두 문장)"}],
-  "importance": "1~5 정수"
+  "importance": "1~5 정수",
+  "sbImpactScore": "1~5 정수",
+  "sbImpactReason": "저축은행 업계 관점에서 이 점수를 준 이유 한 문장"
 }
 
 카테고리 목록:
@@ -57,7 +59,14 @@ ${categoryList}
   4 = 금융권 전반이 주목할 주요 뉴스
   3 = 업계 관계자에게 의미 있으나 대중 관심은 제한적
   2 = 참고 수준의 소규모 뉴스
-  1 = 뉴스 가치가 낮은 정형화된 정보`;
+  1 = 뉴스 가치가 낮은 정형화된 정보
+- sbImpactScore (저축은행 업계 관점에서 이 뉴스가 미치는 영향 — importance와 다른 축이니 독립적으로 판단하세요):
+  5 = 저축은행 업계 전반의 규제·수익·건전성에 직접적이고 즉각적인 영향
+  4 = 업계에 상당한 영향, 단기 대응 필요
+  3 = 간접적 영향, 모니터링 필요
+  2 = 참고 수준
+  1 = 무관
+- sbImpactReason: sbImpactScore를 그렇게 매긴 이유를 한 문장으로 설명하세요.`;
 }
 
 function buildUserPrompt(body: string, titleHint: string | null): string {

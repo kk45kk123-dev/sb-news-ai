@@ -39,6 +39,10 @@ export const ingestAnalyzeOutputSchema = z.object({
   /** 전체 금융권 관점 중요도(1-5) — RSS 자동수집 분석과 같은 기준. 이전에는 이
    *  경로에서 AI에게 물어보지도 않고 3으로 고정했었다. */
   importance: z.number().int().min(1).max(5).default(3),
+  /** 저축은행 업계 관점 영향도(1-5) — RSS 자동수집 분석과 같은 기준. 이전에는
+   *  이 경로에서 AI에게 물어보지도 않고 3으로 고정했었다. */
+  sbImpactScore: z.number().int().min(1).max(5).default(3),
+  sbImpactReason: z.string().min(1).default("관리자 수동 등록 — 세부 영향도 분석은 실행되지 않았습니다."),
 });
 export type IngestAnalyzeOutput = z.infer<typeof ingestAnalyzeOutputSchema>;
 

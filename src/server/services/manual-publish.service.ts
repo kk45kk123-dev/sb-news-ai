@@ -31,6 +31,10 @@ export interface PublishManualArticleInput {
   /** 전체 금융권 관점 중요도(1-5, RSS 자동수집과 같은 기준). 이전에는 이 값을 AI에게
    *  물어보지 않고 무조건 3으로 고정했었다 — 지금은 AI가 실제로 판단한다. */
   importance?: number;
+  /** 저축은행 업계 관점 영향도(1-5, RSS 자동수집과 같은 기준). 이전에는 이 값을 AI에게
+   *  물어보지 않고 무조건 3으로 고정했었다 — 지금은 AI가 실제로 판단한다. */
+  sbImpactScore?: number;
+  sbImpactReason?: string;
   modelKey: string;
   tokenInput: number;
   tokenOutput: number;
@@ -173,8 +177,8 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
           summaryLines: input.summaryBullets,
           keywords: input.keywords,
           importance: input.importance ?? 3,
-          sbImpactScore: 3,
-          sbImpactReason: "관리자 수동 등록 — 세부 영향도 분석은 실행되지 않았습니다.",
+          sbImpactScore: input.sbImpactScore ?? 3,
+          sbImpactReason: input.sbImpactReason ?? "관리자 수동 등록 — 세부 영향도 분석은 실행되지 않았습니다.",
           risks: [],
           actionIdeas: [],
           evidence: [],

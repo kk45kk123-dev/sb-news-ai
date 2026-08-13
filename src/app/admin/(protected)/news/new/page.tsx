@@ -24,6 +24,7 @@ import { PipelineStepper } from "@/components/admin/pipeline-stepper";
 import { NewsThumbnail } from "@/components/news/news-thumbnail";
 import { CategoryBadge } from "@/components/news/category-badge";
 import { AiImportance } from "@/components/news/ai-importance";
+import { ImpactMeter } from "@/components/news/impact-meter";
 
 type Phase = "input" | "running" | "review" | "done";
 
@@ -144,6 +145,8 @@ export default function AdminNewsIngestPage() {
           keywords: draft.analysis.keywords,
           glossary: draft.analysis.glossary,
           importance: draft.analysis.importance,
+          sbImpactScore: draft.analysis.sbImpactScore,
+          sbImpactReason: draft.analysis.sbImpactReason,
           body: draft.body,
           sourceUrl: draft.sourceUrl,
           imageUrl: imageUrl.trim() === "" ? null : imageUrl.trim(),
@@ -383,6 +386,8 @@ export default function AdminNewsIngestPage() {
                 <CategoryBadge categoryId={draft.analysis.categoryId} />
                 <AiImportance score={draft.analysis.importance} />
               </div>
+              <ImpactMeter label="저축은행 영향도" score={draft.analysis.sbImpactScore} />
+              <p className="text-xs text-muted-foreground">{draft.analysis.sbImpactReason}</p>
               <p className="text-xs text-muted-foreground">
                 {draft.sourceUrl ? "외부 링크" : "직접 등록"} · {categories.find((c) => c.id === draft.analysis.categoryId)?.name}
               </p>

@@ -18,6 +18,8 @@ const publishRequestSchema = z.object({
   imageUrl: z.string().url().nullable().optional(),
   glossary: z.array(glossaryTermSchema).max(5).optional(),
   importance: z.number().int().min(1).max(5).optional(),
+  sbImpactScore: z.number().int().min(1).max(5).optional(),
+  sbImpactReason: z.string().min(1).optional(),
   modelKey: z.string().min(1),
   tokenInput: z.number().int().nonnegative(),
   tokenOutput: z.number().int().nonnegative(),
