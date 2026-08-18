@@ -24,7 +24,8 @@ async function notifyScrapFailure(orgId: string, sourceName: string, errorMessag
       type: "scrap_failure",
       title: `"${sourceName}" 출처 수집 실패`,
       body: errorMessage.slice(0, 300),
-      link: "/admin/sources",
+      // 출처 관리 화면(/admin/sources)이 삭제되어 딥링크할 화면이 없다 — 제목에 이미
+      // 어떤 출처인지 나와 있으니 링크 없이 알림만 남긴다.
     });
   } catch (e) {
     console.error("[collect] scrap failure notification failed", e);

@@ -32,8 +32,8 @@ const CATEGORIES = [
  * 사이트로 나가는 아웃바운드 연결이 차단되어 있어 실제 RSS 주소를 검증할 수 없었다.
  * 그래서 url을 추측해서 채우는 대신 명백한 placeholder로 남기고 status='needs_review'로
  * 시드한다 — F-01 수용 기준("검증 실패한 출처는 status='needs_review'로 표시")대로다.
- * 실제 URL은 인터넷 접근이 되는 환경에서 확인 후 /admin/sources 또는 이 스크립트에서
- * 채워 넣어야 한다.
+ * 실제 URL은 인터넷 접근이 되는 환경에서 확인 후 이 스크립트에서 채워 넣거나,
+ * /api/v1/admin/sources PUT으로 직접 갱신해야 한다(관리 UI는 삭제됨).
  */
 const SOURCES: {
   name: string;
