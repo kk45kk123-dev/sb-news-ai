@@ -2,10 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 
-type Tab = "crawl" | "ai" | "audit";
+type Tab = "ai" | "audit";
 
 const TABS: { key: Tab; label: string; endpoint: string }[] = [
-  { key: "crawl", label: "수집 로그", endpoint: "/api/v1/admin/logs/crawl" },
   { key: "ai", label: "AI 호출 로그", endpoint: "/api/v1/admin/logs/ai" },
   { key: "audit", label: "감사 로그", endpoint: "/api/v1/admin/logs/audit" },
 ];
@@ -16,7 +15,7 @@ function fmtDate(v: string | null) {
 }
 
 export default function AdminLogsPage() {
-  const [tab, setTab] = useState<Tab>("crawl");
+  const [tab, setTab] = useState<Tab>("ai");
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -60,52 +59,12 @@ export default function AdminLogsPage() {
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border bg-bg">
           <p className="border-b border-border p-2 text-xs text-text-subtle">총 {total}건 (최근 50건 표시)</p>
-          {tab === "crawl" && <CrawlTable rows={rows as unknown as CrawlRow[]} />}
           {tab === "ai" && <AiTable rows={rows as unknown as AiRow[]} />}
           {tab === "audit" && <AuditTable rows={rows as unknown as AuditRow[]} />}
           {rows.length === 0 && <p className="p-6 text-center text-sm text-text-muted">로그가 없습니다.</p>}
         </div>
       )}
     </div>
-  );
-}
-
-interface CrawlRow {
-  id: string;
-  source: { name: string };
-  status: string;
-  itemsFound: number;
-  itemsNew: number;
-  startedAt: string;
-  finishedAt: string | null;
-  errorMessage: string | null;
-}
-
-function CrawlTable({ rows }: { rows: CrawlRow[] }) {
-  if (rows.length === 0) return null;
-  return (
-    <table className="w-full text-sm">
-      <thead className="bg-bg-subtle text-left text-xs text-text-subtle">
-        <tr>
-          <th className="p-2">출처</th>
-          <th className="p-2">상태</th>
-          <th className="p-2">발견/신규</th>
-          <th className="p-2">시작</th>
-          <th className="p-2">에러</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.id} className="border-t border-border">
-            <td className="p-2">{r.source.name}</td>
-            <td className={`p-2 ${r.status === "success" ? "text-success" : "text-danger"}`}>{r.status}</td>
-            <td className="p-2 tabular-nums">{r.itemsFound} / {r.itemsNew}</td>
-            <td className="p-2 text-text-muted">{fmtDate(r.startedAt)}</td>
-            <td className="max-w-xs truncate p-2 text-xs text-danger">{r.errorMessage}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }
 
