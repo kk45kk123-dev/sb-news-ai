@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 /**
  * AI가 최근 24시간 수집분 중 영향도 높은 기사들을 묶어 "왜 지금 중요한지 / 어떻게
  * 대응할지"로 정리한 요약. 비로그인 방문자(GET이 401)나 아직 생성된 브리핑이 없는
- * 날에는 조용히 숨는다 — 관리자 대시보드의 "재생성" 버튼이 실제 생성 트리거다.
+ * 날에는 조용히 숨는다 — run-daily-pipeline.ts의 일일 파이프라인이 생성 트리거다.
  */
 export function TodayBriefing() {
   const { data: briefing, isLoading } = useTodayBriefingQuery();
