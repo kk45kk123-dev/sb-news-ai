@@ -10,6 +10,7 @@ import {
   type ArticleWithRelations,
 } from "@/server/repositories/article.repository";
 import { getCategoryGradient } from "@/data/categories";
+import { mapRssCategoryToSiteCategory } from "@/data/category-mapping";
 import { newsSchema, type News } from "@/lib/schemas/news.schema";
 
 // NOTE: this file used to also define a separate ArticleDto/listArticlesForOrg/
@@ -32,7 +33,12 @@ import { newsSchema, type News } from "@/lib/schemas/news.schema";
  */
 export function toNewsDto(article: ArticleWithRelations): News {
   const analysis = article.analyses[0];
-  const categoryId = article.categoryId ?? "c8";
+  // 수동 등록 기사는 categoryId(고정 9개 taxonomy)가 항상 직접 채워진다. RSS
+  // 자동수집 기사는 categoryId가 없는 대신 categories(ArticleCategory, rank
+  // 오름차순)에 AI가 판단한 1순위 카테고리가 들어있다 — 그걸 매핑해서 쓴다.
+  // 매핑에 없거나 둘 다 없으면 mapRssCategoryToSiteCategory의 기본값(c8)으로.
+  const topRssCategoryName = article.categories[0]?.category.name;
+  const categoryId = article.categoryId ?? (topRssCategoryName ? mapRssCategoryToSiteCategory(topRssCategoryName) : "c8");
   const isExternal = !article.url.startsWith("internal://");
   const summaryBullets = analysis?.summaryLines.length === 3 ? analysis.summaryLines : ["", "", ""];
 

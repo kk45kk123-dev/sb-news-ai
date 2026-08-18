@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/client";
 import type { Article, PipelineStage } from "@prisma/client";
 import type { CollectedItem } from "@/server/collectors/base.collector";
 import { Prisma } from "@prisma/client";
+import { findRssCategoryNamesForSiteCategory } from "@/data/category-mapping";
 
 /**
  * url_hash UNIQUE 제약(F-01 수용 기준)에 기대어 멱등하게 삽입한다.
@@ -174,7 +175,21 @@ export async function listArticles(
     where.userStates = { some: { userId: filters.userId, isBookmarked: true } };
   }
   if (filters.categoryId) {
-    where.categoryId = filters.categoryId;
+    // RSS 자동수집 기사는 categoryId가 비어 있고 대신 categories(ArticleCategory)에
+    // AI가 판단한 카테고리명이 들어있다 — toNewsDto()가 그걸 매핑해서 보여주는 것과
+    // 일관되게, 필터도 역매핑된 RSS 카테고리명을 함께 매치해야 목록에서도 같은
+    // 기사가 나타난다(그렇지 않으면 카드엔 보이는데 해당 탭 필터에선 빠지는 불일치 발생).
+    const rssCategoryNames = findRssCategoryNamesForSiteCategory(filters.categoryId);
+    where.AND = rssCategoryNames.length
+      ? [
+          {
+            OR: [
+              { categoryId: filters.categoryId },
+              { categoryId: null, categories: { some: { category: { name: { in: rssCategoryNames } } } } },
+            ],
+          },
+        ]
+      : [{ categoryId: filters.categoryId }];
   }
   if (filters.statuses?.length) {
     where.status = { in: filters.statuses };
