@@ -342,7 +342,7 @@ export interface ManualArticlePatch {
   keywords?: string[];
   body?: string;
   imageUrl?: string | null;
-  glossary?: { term: string; definition: string }[];
+  glossary?: { term: string; definition: string; context?: string }[];
 }
 
 /** Edit surface for admin-published (manual-ingest) articles — see manual-publish.service.ts. */

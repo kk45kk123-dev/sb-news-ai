@@ -94,7 +94,7 @@ export default function NewsDetailPage() {
   }
 
   const glossaryTerms = news.glossary.length
-    ? Object.fromEntries(news.glossary.map((g) => [g.term, g.definition]))
+    ? Object.fromEntries(news.glossary.map((g) => [g.term, { definition: g.definition, context: g.context }]))
     : undefined;
 
   return (

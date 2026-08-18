@@ -24,6 +24,8 @@ export const publisherListSchema = z.array(publisherSchema);
 export const glossaryTermSchema = z.object({
   term: z.string(),
   definition: z.string(),
+  /** 이 기사에서 용어가 쓰인 맥락 한 문장. AI가 채우는 선택 필드 — 없어도 term/definition만으로 동작한다. */
+  context: z.string().optional(),
 });
 export type GlossaryTerm = z.infer<typeof glossaryTermSchema>;
 
@@ -91,6 +93,7 @@ export const newsEditFormSchema = z.object({
       z.object({
         term: z.string().min(1, { message: "용어를 입력해주세요." }),
         definition: z.string().min(1, { message: "설명을 입력해주세요." }),
+        context: z.string().optional(),
       })
     )
     .max(10, { message: "용어는 최대 10개까지 입력할 수 있습니다." }),

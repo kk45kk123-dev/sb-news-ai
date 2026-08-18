@@ -8,10 +8,12 @@ import { MOTION } from "@/lib/motion";
 interface TermNoteProps {
   term: string;
   definition: string;
+  /** 이 기사에서 용어가 쓰인 맥락 한 문장 — 있을 때만 정의 아래에 보조 설명으로 표시한다. */
+  context?: string;
   children: React.ReactNode;
 }
 
-export function TermNote({ term, definition, children }: TermNoteProps) {
+export function TermNote({ term, definition, context, children }: TermNoteProps) {
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -68,6 +70,11 @@ export function TermNote({ term, definition, children }: TermNoteProps) {
               <span className="text-[11px] font-bold uppercase tracking-wide text-primary">{term}</span>
             </div>
             <p className="text-[13.5px] leading-[1.65] text-popover-foreground">{definition}</p>
+            {context && (
+              <p className="mt-1.5 border-t border-border pt-1.5 text-[12px] leading-[1.6] text-muted-foreground">
+                이 기사에서는: {context}
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

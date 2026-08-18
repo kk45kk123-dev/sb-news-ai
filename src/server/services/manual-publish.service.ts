@@ -8,7 +8,7 @@ import {
   type ManualArticlePatch,
 } from "@/server/repositories/article.repository";
 import { toNewsDto } from "@/server/services/article.service";
-import type { News } from "@/lib/schemas/news.schema";
+import type { News, GlossaryTerm } from "@/lib/schemas/news.schema";
 
 export class DuplicateArticleError extends Error {
   constructor(public readonly existingArticleId: string) {
@@ -26,8 +26,8 @@ export interface PublishManualArticleInput {
   body: string;
   sourceUrl: string | null;
   imageUrl?: string | null;
-  /** RSS 자동수집 분석과 동일한 {term, definition} 모양 — analysis.glossary에 그대로 저장된다. */
-  glossary?: { term: string; definition: string }[];
+  /** RSS 자동수집 분석과 동일한 {term, definition, context?} 모양 — analysis.glossary에 그대로 저장된다. */
+  glossary?: GlossaryTerm[];
   /** 전체 금융권 관점 중요도(1-5, RSS 자동수집과 같은 기준). 이전에는 이 값을 AI에게
    *  물어보지 않고 무조건 3으로 고정했었다 — 지금은 AI가 실제로 판단한다. */
   importance?: number;

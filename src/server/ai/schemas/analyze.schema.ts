@@ -15,7 +15,14 @@ export const analyzeOutputSchema = z.object({
   categories: z.array(z.string()).min(1).max(3),
   evidence: z.array(z.string().max(40)).max(2).default([]),
   glossary: z
-    .array(z.object({ term: z.string().max(20), definition: z.string().max(120) }))
+    .array(
+      z.object({
+        term: z.string().max(20),
+        definition: z.string().max(120),
+        /** 이 기사에서 용어가 쓰인 맥락 한 문장 — 선택 필드, DB에는 이미 Json 컬럼이라 마이그레이션 없이 저장된다. */
+        context: z.string().max(150).optional(),
+      })
+    )
     .max(8)
     .default([]),
   confidence: z.enum(["high", "medium", "low"]),
@@ -57,7 +64,11 @@ export const analyzeOutputJsonSchema = {
       items: {
         type: "object",
         required: ["term", "definition"],
-        properties: { term: { type: "string" }, definition: { type: "string" } },
+        properties: {
+          term: { type: "string" },
+          definition: { type: "string" },
+          context: { type: "string" },
+        },
       },
       maxItems: 8,
     },

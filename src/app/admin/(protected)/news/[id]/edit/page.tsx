@@ -87,7 +87,7 @@ function EditForm({ news }: { news: News }) {
           body: values.body,
           imageUrl: values.imageUrl.trim() === "" ? null : values.imageUrl.trim(),
           glossary: values.glossary
-            .map((g) => ({ term: g.term.trim(), definition: g.definition.trim() }))
+            .map((g) => ({ term: g.term.trim(), definition: g.definition.trim(), context: g.context }))
             .filter((g) => g.term && g.definition),
         },
       },
@@ -222,6 +222,11 @@ function EditForm({ news }: { news: News }) {
                       placeholder="쉬운 설명 (한두 문장)"
                       {...register(`glossary.${index}.definition`)}
                     />
+                    {field.context && (
+                      <p className="text-[11px] text-muted-foreground">
+                        AI가 남긴 맥락(수정 불가): {field.context}
+                      </p>
+                    )}
                   </div>
                   <Button
                     type="button"

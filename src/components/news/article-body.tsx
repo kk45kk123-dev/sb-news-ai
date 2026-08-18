@@ -7,7 +7,9 @@ export function ArticleBody({ text, glossary }: { text: string; glossary?: Gloss
     .map((p) => p.trim())
     .filter(Boolean);
 
-  const terms = glossary?.length ? Object.fromEntries(glossary.map((g) => [g.term, g.definition])) : undefined;
+  const terms = glossary?.length
+    ? Object.fromEntries(glossary.map((g) => [g.term, { definition: g.definition, context: g.context }]))
+    : undefined;
 
   return (
     <div className="space-y-6 text-body-copy">

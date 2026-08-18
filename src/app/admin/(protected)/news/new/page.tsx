@@ -326,6 +326,7 @@ export default function AdminNewsIngestPage() {
                     {draft.analysis.glossary.map((g) => (
                       <li key={g.term} className="text-xs leading-relaxed text-muted-foreground">
                         <span className="font-semibold text-foreground">{g.term}</span> — {g.definition}
+                        {g.context && <span className="block text-[11px] text-muted-foreground/80">맥락: {g.context}</span>}
                       </li>
                     ))}
                   </ul>
