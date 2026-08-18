@@ -42,31 +42,33 @@ const SOURCES: {
   fetchIntervalMin: number;
 }[] = [
   {
-    name: "금융위원회 보도자료",
+    name: "금융위원회",
     url: "https://TODO-verify.example/fsc-press-releases-rss",
     categoryHints: ["정책", "규제/감독"],
     fetchIntervalMin: 15,
   },
   {
-    name: "금융감독원 보도자료",
+    name: "금융감독원",
     url: "https://TODO-verify.example/fss-press-releases-rss",
     categoryHints: ["정책", "규제/감독"],
     fetchIntervalMin: 15,
   },
   {
-    name: "한국은행 보도자료",
+    name: "한국은행",
     url: "https://TODO-verify.example/bok-press-releases-rss",
     categoryHints: ["금리", "정책"],
     fetchIntervalMin: 15,
   },
   {
-    name: "연합뉴스 경제",
+    name: "연합뉴스",
     url: "https://TODO-verify.example/yonhap-economy-rss",
     categoryHints: ["업계동향"],
     fetchIntervalMin: 30,
   },
   {
-    name: '"저축은행" 검색 피드',
+    // 특정 언론사 하나가 아니라 "저축은행" 키워드로 여러 매체를 걸러내는 검색 피드라
+    // 다른 항목들처럼 단일 언론사명으로 표기할 수 없다 — 성격을 그대로 이름에 남긴다.
+    name: '"저축은행" 키워드 검색',
     url: "https://TODO-verify.example/savings-bank-keyword-rss",
     categoryHints: ["업계동향"],
     fetchIntervalMin: 30,
@@ -278,7 +280,9 @@ async function main() {
   console.log(`✔ categories: ${CATEGORIES.length}개`);
 
   for (const s of SOURCES) {
-    const existing = await prisma.source.findFirst({ where: { orgId: org.id, name: s.name } });
+    // url로 식별한다 — name은 표기 개선을 위해 나중에 바뀔 수 있어도(예: "OO 보도자료" →
+    // "OO") url은 안 바뀌므로, name 매칭이었다면 재시딩 시 이름만 바뀐 중복 행이 생긴다.
+    const existing = await prisma.source.findFirst({ where: { orgId: org.id, url: s.url } });
     if (!existing) {
       await prisma.source.create({
         data: {
@@ -291,6 +295,8 @@ async function main() {
           status: "needs_review",
         },
       });
+    } else if (existing.name !== s.name) {
+      await prisma.source.update({ where: { id: existing.id }, data: { name: s.name } });
     }
   }
   console.log(`✔ sources: ${SOURCES.length}개 (전부 status='needs_review' — 실제 URL 검증 필요)`);
