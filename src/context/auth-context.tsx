@@ -11,6 +11,7 @@ interface AuthContextValue {
   login: (input: LoginInput) => Promise<User>;
   signup: (input: SignupInput) => Promise<User>;
   logout: () => void;
+  updateProfileName: (name: string) => Promise<User>;
 }
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
@@ -81,7 +82,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }).finally(() => setUser(null));
   }, []);
 
-  const value = React.useMemo(() => ({ user, isLoading, login, signup, logout }), [user, isLoading, login, signup, logout]);
+  const updateProfileName = React.useCallback(async (name: string) => {
+    const updated = await apiFetch<MeResponse>("/api/v1/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    });
+    const real: User = { ...updated, createdAt: new Date().toISOString() };
+    setUser(real);
+    return real;
+  }, []);
+
+  const value = React.useMemo(
+    () => ({ user, isLoading, login, signup, logout, updateProfileName }),
+    [user, isLoading, login, signup, logout, updateProfileName]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

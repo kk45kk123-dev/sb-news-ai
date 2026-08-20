@@ -74,3 +74,9 @@ export async function softDeleteUser(id: string, orgId: string): Promise<User | 
 export async function updateLastLogin(id: string): Promise<void> {
   await prisma.user.update({ where: { id }, data: { lastLoginAt: new Date() } });
 }
+
+/** 본인이 자신의 표시 이름을 바꾼다 — 세션은 매 요청마다 DB에서 새로 조회하므로
+ *  (guard.ts의 resolveAuthContext) 별도 캐시 무효화 없이 다음 요청부터 즉시 반영된다. */
+export async function updateUserName(id: string, name: string): Promise<User> {
+  return prisma.user.update({ where: { id }, data: { name } });
+}

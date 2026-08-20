@@ -29,6 +29,12 @@ export const signupSchema = z
   });
 export type SignupInput = z.infer<typeof signupSchema>;
 
+/** 본인 프로필의 이름 변경 — 공개 사이트(/profile)와 관리자 콘솔 계정 모두 이 스키마로 검증한다. */
+export const updateProfileSchema = z.object({
+  name: z.string().min(2, { message: "이름은 2자 이상 입력해주세요." }).max(100, { message: "이름은 100자 이내로 입력해주세요." }),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
 export const adminRoleSchema = z.enum(["admin", "viewer"]);
 export type AdminRole = z.infer<typeof adminRoleSchema>;
 

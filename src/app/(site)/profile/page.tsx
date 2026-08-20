@@ -1,17 +1,53 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Bookmark, Heart, History, LogOut } from "lucide-react";
+import { toast } from "sonner";
+import { Bookmark, Heart, History, LogOut, Pencil, Check, X } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useUserActivity } from "@/context/user-activity-context";
+import { ApiRequestError } from "@/lib/api/http";
+import { updateProfileSchema } from "@/lib/schemas/user.schema";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfileName } = useAuth();
   const { bookmarkedIds, likedIds, recentlyViewedIds } = useUserActivity();
   const router = useRouter();
+
+  const [isEditingName, setIsEditingName] = React.useState(false);
+  const [nameDraft, setNameDraft] = React.useState("");
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  function startEditing() {
+    setNameDraft(user!.name);
+    setIsEditingName(true);
+  }
+
+  async function saveName() {
+    const parsed = updateProfileSchema.safeParse({ name: nameDraft.trim() });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "이름을 확인해주세요.");
+      return;
+    }
+    if (parsed.data.name === user!.name) {
+      setIsEditingName(false);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateProfileName(parsed.data.name);
+      toast.success("이름이 변경되었습니다.");
+      setIsEditingName(false);
+    } catch (e) {
+      toast.error(e instanceof ApiRequestError ? e.message : "이름 변경에 실패했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   if (!user) {
     return (
@@ -29,8 +65,44 @@ export default function ProfilePage() {
           <Avatar className="h-16 w-16 text-xl">
             <AvatarFallback>{user.name.slice(0, 1).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div>
-            <p className="text-lg font-bold">{user.name}</p>
+          <div className="w-full">
+            {isEditingName ? (
+              <div className="flex items-center justify-center gap-1.5">
+                <Input
+                  autoFocus
+                  aria-label="이름"
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveName();
+                    if (e.key === "Escape") setIsEditingName(false);
+                  }}
+                  disabled={isSaving}
+                  className="h-8 max-w-[160px] text-center"
+                />
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" disabled={isSaving} onClick={saveName}>
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 shrink-0"
+                  disabled={isSaving}
+                  onClick={() => setIsEditingName(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={startEditing}
+                className="group inline-flex items-center gap-1.5 text-lg font-bold hover:text-primary"
+              >
+                {user.name}
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            )}
             <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
         </CardContent>
