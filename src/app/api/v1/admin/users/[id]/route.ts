@@ -8,6 +8,7 @@ import {
   setUserActive,
   setUserRole,
   countActiveAdmins,
+  softDeleteUser,
 } from "@/server/repositories/user.repository";
 import { recordAudit } from "@/server/services/audit.service";
 
@@ -84,4 +85,65 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   return apiOk({ id: updated.id, isActive: updated.isActive, role: updated.role });
+}
+
+/**
+ * 계정을 "삭제"한다 — 실제 행은 지우지 않고 소프트 삭제한다(softDeleteUser 주석
+ * 참고: 로그인 이력이 있는 계정은 FK 제약 때문에 진짜 DELETE가 거의 항상 실패한다).
+ * isActive도 함께 꺼지므로 삭제된 계정은 기존 로그인 로직(auth.service.ts의
+ * login())이 그대로 차단한다 — 정지된 계정과 동일한 경로다.
+ */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await getAuthContext(req);
+  if (!ctx) return apiError(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.", 401);
+  if (!hasRole(ctx.user.role, ["admin"])) {
+    return apiError(ErrorCode.FORBIDDEN, "관리자만 사용자를 관리할 수 있습니다.", 403);
+  }
+  if (!verifyCsrf(req, ctx)) {
+    return apiError(ErrorCode.CSRF_MISMATCH, "CSRF 토큰이 유효하지 않습니다.", 403);
+  }
+
+  const { id } = await params;
+  const target = await findOrgUserById(id, ctx.user.orgId);
+  if (!target) {
+    return apiError(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다.", 404);
+  }
+  if (target.deletedAt) {
+    return apiError(ErrorCode.NOT_FOUND, "이미 삭제된 사용자입니다.", 404);
+  }
+
+  // PATCH와 같은 이유: 본인 계정을 스스로 삭제하면 관리 콘솔에서 즉시 튕겨나가
+  // 아무도 되돌릴 수 없다.
+  if (target.id === ctx.user.id) {
+    return apiError(ErrorCode.VALIDATION_ERROR, "본인 계정은 여기서 삭제할 수 없습니다.", 400);
+  }
+
+  // 마지막 남은 활성 관리자를 삭제하면 아무도 관리 콘솔에 못 들어가는 상태가 된다.
+  if (target.role === "admin" && target.isActive) {
+    const activeAdmins = await countActiveAdmins(ctx.user.orgId);
+    if (activeAdmins <= 1) {
+      return apiError(ErrorCode.VALIDATION_ERROR, "마지막 남은 관리자는 삭제할 수 없습니다.", 400);
+    }
+  }
+
+  const deleted = await softDeleteUser(id, ctx.user.orgId);
+  if (!deleted) {
+    return apiError(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다.", 404);
+  }
+
+  try {
+    await recordAudit({
+      orgId: ctx.user.orgId,
+      userId: ctx.user.id,
+      action: "admin.user.delete",
+      targetType: "user",
+      targetId: id,
+      before: { isActive: target.isActive, role: target.role, deletedAt: null },
+      after: { isActive: deleted.isActive, role: deleted.role, deletedAt: deleted.deletedAt },
+    });
+  } catch (auditError) {
+    console.error("[admin/users/[id]] recordAudit failed after successful delete", auditError);
+  }
+
+  return apiOk({ id: deleted.id });
 }

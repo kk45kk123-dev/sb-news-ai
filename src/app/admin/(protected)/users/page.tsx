@@ -3,9 +3,10 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api/http";
 import { relativeTime } from "@/lib/format";
-import { useUpdateOrgUserMutation } from "@/lib/query/use-admin";
+import { useUpdateOrgUserMutation, useDeleteOrgUserMutation } from "@/lib/query/use-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 interface OrgUser {
   id: string;
@@ -32,7 +41,9 @@ export default function AdminUsersPage() {
     queryFn: () => apiFetch<OrgUser[]>("/api/v1/admin/users"),
   });
   const updateUser = useUpdateOrgUserMutation();
+  const deleteUser = useDeleteOrgUserMutation();
   const [pendingId, setPendingId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: string; name: string } | null>(null);
 
   function toggleActive(user: OrgUser) {
     setPendingId(user.id);
@@ -50,6 +61,23 @@ export default function AdminUsersPage() {
         },
       }
     );
+  }
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    const { id, name } = deleteTarget;
+    setPendingId(id);
+    deleteUser.mutate(id, {
+      onSuccess: () => {
+        toast.success(`${name}님 계정을 삭제했습니다. 더 이상 로그인할 수 없습니다.`);
+        setPendingId(null);
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "삭제에 실패했습니다.");
+        setPendingId(null);
+      },
+    });
+    setDeleteTarget(null);
   }
 
   function changeRole(user: OrgUser, role: "admin" | "viewer") {
@@ -103,7 +131,7 @@ export default function AdminUsersPage() {
               </TableHeader>
               <TableBody>
                 {users.map((u) => {
-                  const isPending = pendingId === u.id && updateUser.isPending;
+                  const isPending = pendingId === u.id && (updateUser.isPending || deleteUser.isPending);
                   return (
                     <TableRow key={u.id}>
                       <TableCell>
@@ -144,14 +172,26 @@ export default function AdminUsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={isPending}
-                          onClick={() => toggleActive(u)}
-                        >
-                          {u.status === "active" ? "정지" : "활성화"}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isPending}
+                            onClick={() => toggleActive(u)}
+                          >
+                            {u.status === "active" ? "정지" : "활성화"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive"
+                            disabled={isPending}
+                            onClick={() => setDeleteTarget({ id: u.id, name: u.name })}
+                            aria-label="사용자 삭제"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -161,6 +201,26 @@ export default function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>계정을 삭제할까요?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            &ldquo;{deleteTarget?.name}&rdquo; 계정을 삭제합니다. 삭제하면 즉시 로그인이 차단되고 사용자 목록에서도
+            사라집니다. 이 작업은 화면에서 되돌릴 수 없습니다.
+          </p>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">취소</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={confirmDelete}>
+              삭제
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

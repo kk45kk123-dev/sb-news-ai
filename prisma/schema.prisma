@@ -176,6 +176,12 @@ model User {
   role          UserRole  @default(viewer)
   passwordHash  String?   @map("password_hash") @db.VarChar(255)
   isActive      Boolean   @default(true) @map("is_active")
+  /** 관리자 "삭제" 시 채워진다. 실제 행은 지우지 않는다 — chat_sessions/audit_logs/
+   *  feedbacks/prompt_versions/golden_set이 이 사용자를 참조(FK, onDelete 기본값=Restrict)
+   *  하고 있어 진짜 DELETE는 로그인 이력이 있는 계정이면 거의 항상 실패한다. isActive를
+   *  함께 false로 두므로 로그인 차단은 기존 정지 로직이 그대로 처리하고, 이 컬럼은
+   *  목록에서 숨기기/"삭제됨" 구분 용도로만 쓴다. */
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
   lastLoginAt   DateTime? @map("last_login_at") @db.Timestamptz
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz

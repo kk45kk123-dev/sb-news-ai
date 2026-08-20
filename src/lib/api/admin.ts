@@ -160,3 +160,8 @@ export async function updateOrgUser(id: string, patch: UpdateUserPatch): Promise
     body: JSON.stringify(patch),
   });
 }
+
+/** 소프트 삭제 — 실제 행은 남지만 로그인은 즉시 차단되고 사용자 목록에서 사라진다. */
+export async function deleteOrgUser(id: string): Promise<{ id: string }> {
+  return apiFetch(`/api/v1/admin/users/${id}`, { method: "DELETE" });
+}
