@@ -5,6 +5,18 @@ export async function findUserByEmail(orgId: string, email: string): Promise<Use
   return prisma.user.findUnique({ where: { orgId_email: { orgId, email } } });
 }
 
+/**
+ * softDeleteUser()가 삭제 시 email을 함께 비우도록 고치기 전에 삭제된 legacy 행을
+ * 위한 자가치유 함수 — signup()이 그런 행을 만나면 여기서 그 자리에서 이메일을
+ * 비워 재가입이 막히지 않도록 한다. 이미 비워진 행(email이 "deleted-"로 시작)이나
+ * 삭제되지 않은 행에는 아무 일도 하지 않는다.
+ */
+export async function freeDeletedUserEmail(id: string): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user || !user.deletedAt || user.email.startsWith("deleted-")) return;
+  await prisma.user.update({ where: { id }, data: { email: `deleted-${Date.now()}-${user.email}` } });
+}
+
 export interface CreateUserInput {
   orgId: string;
   name: string;

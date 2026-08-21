@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { findUserByEmail, createUser, updateLastLogin } from "@/server/repositories/user.repository";
+import { findUserByEmail, createUser, updateLastLogin, freeDeletedUserEmail } from "@/server/repositories/user.repository";
 import { verifyPassword, hashPassword } from "@/server/auth/password";
 import { createSession, destroySession } from "@/server/auth/session";
 import { recordAudit } from "./audit.service";
@@ -87,7 +87,13 @@ export async function login(ctx: LoginRequestContext): Promise<LoginResult> {
 export async function signup(ctx: SignupRequestContext): Promise<LoginResult> {
   const existing = await findUserByEmail(ctx.orgId, ctx.email);
   if (existing) {
-    throw new DuplicateEmailError("이미 가입된 이메일입니다.");
+    if (!existing.deletedAt) {
+      throw new DuplicateEmailError("이미 가입된 이메일입니다.");
+    }
+    // 관리자 삭제 시 email을 함께 비우도록 고치기 전에 삭제된 legacy 행 —
+    // 이 자리에서 비워서 재가입을 계속 진행한다 (user.repository.ts의
+    // freeDeletedUserEmail 주석 참고).
+    await freeDeletedUserEmail(existing.id);
   }
 
   const passwordHash = await hashPassword(ctx.password);
