@@ -138,8 +138,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       action: "admin.user.delete",
       targetType: "user",
       targetId: id,
-      before: { isActive: target.isActive, role: target.role, deletedAt: null },
-      after: { isActive: deleted.isActive, role: deleted.role, deletedAt: deleted.deletedAt },
+      // email은 softDeleteUser()가 재가입 허용을 위해 변형해서 저장하므로, 원래
+      // 이메일을 나중에 확인할 수 있도록 before 스냅샷에 남겨둔다.
+      before: { email: target.email, isActive: target.isActive, role: target.role, deletedAt: null },
+      after: { email: deleted.email, isActive: deleted.isActive, role: deleted.role, deletedAt: deleted.deletedAt },
     });
   } catch (auditError) {
     console.error("[admin/users/[id]] recordAudit failed after successful delete", auditError);

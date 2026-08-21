@@ -61,14 +61,24 @@ export async function setUserRole(id: string, orgId: string, role: UserRole): Pr
  * RESTRICT)로 참조하고 있어, 로그인 이력이 있는 계정을 진짜 DELETE하면 십중팔구
  * 실패한다. isActive를 함께 false로 둬서 로그인 차단은 기존 정지 로직이 그대로
  * 처리하고, deletedAt은 목록에서 숨기는 용도로만 쓴다.
+ *
+ * email도 함께 변형해서 비워둔다 — (orgId, email) 유니크 제약 때문에, 그대로 두면
+ * 삭제된 계정의 이메일로 회원가입을 다시 시도할 때 findUserByEmail()이 이 삭제된
+ * 행을 계속 찾아내 "이미 가입된 이메일"로 막아버린다. 원래 이메일은 감사 로그의
+ * before 스냅샷에 남겨 필요하면 나중에 확인할 수 있다.
  */
 export async function softDeleteUser(id: string, orgId: string): Promise<User | null> {
-  const result = await prisma.user.updateMany({
-    where: { id, orgId, deletedAt: null },
-    data: { isActive: false, deletedAt: new Date() },
+  const target = await prisma.user.findFirst({ where: { id, orgId, deletedAt: null } });
+  if (!target) return null;
+
+  return prisma.user.update({
+    where: { id },
+    data: {
+      isActive: false,
+      deletedAt: new Date(),
+      email: `deleted-${Date.now()}-${target.email}`,
+    },
   });
-  if (result.count === 0) return null;
-  return prisma.user.findUnique({ where: { id } });
 }
 
 export async function updateLastLogin(id: string): Promise<void> {
