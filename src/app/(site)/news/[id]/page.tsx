@@ -15,6 +15,7 @@ import { ConfidenceBadge } from "@/components/news/confidence-badge";
 import { ImpactMeter } from "@/components/news/impact-meter";
 import { ArticleBody } from "@/components/news/article-body";
 import { LikeButton } from "@/components/news/like-button";
+import { FeedbackButtons } from "@/components/news/feedback-buttons";
 import { BookmarkButton } from "@/components/news/bookmark-button";
 import { ShareButton } from "@/components/news/share-button";
 import { RelatedNewsList } from "@/components/news/related-news-list";
@@ -189,6 +190,10 @@ export default function NewsDetailPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="mt-5 border-t border-border pt-4">
+            <FeedbackButtons newsId={news.id} />
           </div>
         </section>
 

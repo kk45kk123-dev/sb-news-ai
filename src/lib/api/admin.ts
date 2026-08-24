@@ -11,6 +11,12 @@ import {
 } from "@/lib/schemas/admin.schema";
 import { newsListParamsSchema, type NewsListParams, type NewsListResponse, type News, type GlossaryTerm } from "@/lib/schemas/news.schema";
 import { orgSettingsSchema, type OrgSettings, type OrgSettingsPatch } from "@/lib/schemas/settings.schema";
+import {
+  adminFeedbackListSchema,
+  feedbackStatusSchema,
+  type AdminFeedbackItem,
+  type FeedbackStatusValue,
+} from "@/lib/schemas/feedback.schema";
 
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
   const search = new URLSearchParams();
@@ -164,4 +170,20 @@ export async function updateOrgUser(id: string, patch: UpdateUserPatch): Promise
 /** 소프트 삭제 — 실제 행은 남지만 로그인은 즉시 차단되고 사용자 목록에서 사라진다. */
 export async function deleteOrgUser(id: string): Promise<{ id: string }> {
   return apiFetch(`/api/v1/admin/users/${id}`, { method: "DELETE" });
+}
+
+// ---- 품질 피드백 (F-12 축소판) ---------------------------------------------
+
+export async function getAdminFeedback(status?: FeedbackStatusValue): Promise<AdminFeedbackItem[]> {
+  const qs = status ? `?status=${status}` : "";
+  const data = await apiFetch<unknown>(`/api/v1/admin/feedback${qs}`);
+  return adminFeedbackListSchema.parse(data);
+}
+
+export async function updateFeedbackStatus(id: string, status: FeedbackStatusValue): Promise<{ id: string; status: string }> {
+  const data = await apiFetch<unknown>(`/api/v1/admin/feedback/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+  return { id: (data as { id: string }).id, status: feedbackStatusSchema.parse((data as { status: string }).status) };
 }

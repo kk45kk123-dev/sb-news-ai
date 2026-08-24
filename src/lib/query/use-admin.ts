@@ -5,6 +5,7 @@ import * as adminApi from "@/lib/api/admin";
 import * as briefingApi from "@/lib/api/briefing";
 import { queryKeys } from "@/lib/query/keys";
 import type { NewsListParams } from "@/lib/schemas/news.schema";
+import type { FeedbackStatusValue } from "@/lib/schemas/feedback.schema";
 
 export function useAdminNewsListQuery(params: Partial<NewsListParams> = {}) {
   return useQuery({
@@ -96,5 +97,20 @@ export function useDeleteOrgUserMutation() {
   return useMutation({
     mutationFn: (id: string) => adminApi.deleteOrgUser(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+}
+
+export function useAdminFeedbackQuery(status?: FeedbackStatusValue) {
+  return useQuery({
+    queryKey: queryKeys.admin.feedback(status),
+    queryFn: () => adminApi.getAdminFeedback(status),
+  });
+}
+
+export function useUpdateFeedbackStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: FeedbackStatusValue }) => adminApi.updateFeedbackStatus(id, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "feedback"] }),
   });
 }

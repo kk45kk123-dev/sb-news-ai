@@ -8,6 +8,7 @@ export const queryKeys = {
     sameTopic: (id: string) => ["news", "same-topic", id] as const,
     popular: () => ["news", "popular"] as const,
     memo: (id: string) => ["news", "memo", id] as const,
+    feedback: (id: string) => ["news", "feedback", id] as const,
   },
   categories: {
     all: () => ["categories"] as const,
@@ -28,6 +29,7 @@ export const queryKeys = {
     dashboard: () => ["admin", "dashboard"] as const,
     settings: () => ["admin", "settings"] as const,
     notifications: () => ["admin", "notifications"] as const,
+    feedback: (status?: string) => ["admin", "feedback", status ?? "all"] as const,
   },
   market: {
     snapshot: () => ["market", "snapshot"] as const,

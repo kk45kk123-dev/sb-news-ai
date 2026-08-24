@@ -3,8 +3,10 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import * as newsApi from "@/lib/api/news";
+import * as feedbackApi from "@/lib/api/feedback";
 import { queryKeys } from "@/lib/query/keys";
 import type { News, NewsListParams, NewsListResponse } from "@/lib/schemas/news.schema";
+import type { SubmitFeedbackInput } from "@/lib/schemas/feedback.schema";
 
 export function useNewsListQuery(params: Partial<NewsListParams> = {}) {
   return useQuery({
@@ -87,6 +89,21 @@ export function useUpdateMemoMutation(newsId: string) {
   return useMutation({
     mutationFn: (memo: string) => newsApi.setMemo(newsId, memo),
     onSuccess: (memo) => queryClient.setQueryData(queryKeys.news.memo(newsId), memo),
+  });
+}
+
+export function useMyFeedbackQuery(newsId: string) {
+  return useQuery({
+    queryKey: queryKeys.news.feedback(newsId),
+    queryFn: () => feedbackApi.getMyFeedback(newsId),
+  });
+}
+
+export function useSubmitFeedbackMutation(newsId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SubmitFeedbackInput) => feedbackApi.submitFeedback(newsId, input),
+    onSuccess: (result) => queryClient.setQueryData(queryKeys.news.feedback(newsId), result),
   });
 }
 

@@ -7,6 +7,7 @@ import {
   BarChart3,
   Settings,
   ScrollText,
+  ThumbsUp,
 } from "lucide-react";
 
 export const ADMIN_NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard }[] = [
@@ -14,6 +15,7 @@ export const ADMIN_NAV_ITEMS: { href: string; label: string; icon: typeof Layout
   { href: "/admin/news", label: "뉴스 관리", icon: Newspaper },
   { href: "/admin/news/new", label: "기사 등록", icon: PlusCircle },
   { href: "/admin/categories", label: "카테고리 관리", icon: FolderKanban },
+  { href: "/admin/feedback", label: "품질 피드백", icon: ThumbsUp },
   { href: "/admin/users", label: "사용자 관리", icon: Users },
   { href: "/admin/stats", label: "통계", icon: BarChart3 },
   { href: "/admin/logs", label: "시스템 로그", icon: ScrollText },
