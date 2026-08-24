@@ -1,6 +1,7 @@
 import { findArticleById } from "@/server/repositories/article.repository";
 import { persistAnalysis, markAnalysisFailed } from "@/server/repositories/analysis.repository";
 import { analyzeArticle } from "@/server/ai/gateway";
+import { generateArticleEmbedding } from "@/server/services/embedding.service";
 
 /**
  * F-02 수용 기준: "분석 실패 기사도 제목·링크는 목록에 노출된다" — 실패해도 article 행은
@@ -34,6 +35,8 @@ export async function runAnalysisForArticle(articleId: string): Promise<void> {
       tokenOutput: result.tokenOutput,
       latencyMs: result.latencyMs,
     });
+
+    await generateArticleEmbedding(article.id); // F-07 — 예외를 삼키므로 분석 성공 여부에 영향 없음
   } catch (e) {
     await markAnalysisFailed(article.id);
     throw e; // BullMQ 재시도 대상 (analyze 큐의 attempts=3)

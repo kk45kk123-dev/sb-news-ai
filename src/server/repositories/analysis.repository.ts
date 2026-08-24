@@ -81,3 +81,8 @@ export async function persistAnalysis(input: PersistAnalysisInput): Promise<void
 export async function markAnalysisFailed(articleId: string): Promise<void> {
   await prisma.article.update({ where: { id: articleId }, data: { pipelineStage: "failed" } });
 }
+
+/** F-07 임베딩 생성용 — 기사의 현재(is_current) 분석 행. */
+export async function findCurrentAnalysis(articleId: string) {
+  return prisma.analysis.findFirst({ where: { articleId, isCurrent: true } });
+}

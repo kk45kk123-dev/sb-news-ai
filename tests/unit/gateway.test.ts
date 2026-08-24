@@ -5,6 +5,7 @@ const mockListActiveModelsForTask = vi.fn();
 const mockListActiveCategoryNames = vi.fn();
 const mockRecordAiCallLog = vi.fn();
 const mockCallAnthropic = vi.fn();
+const mockEmbedText = vi.fn();
 
 vi.mock("@/server/ai/prompt-loader", async () => {
   const actual = await vi.importActual<typeof import("@/server/ai/prompt-loader")>(
@@ -22,8 +23,9 @@ vi.mock("@/server/repositories/ai-call-log.repository", () => ({
   recordAiCallLog: mockRecordAiCallLog,
 }));
 vi.mock("@/server/ai/providers/anthropic.provider", () => ({ callAnthropic: mockCallAnthropic }));
+vi.mock("@/server/ai/providers/openai.provider", () => ({ embedText: mockEmbedText }));
 
-const { analyzeArticle, generateBriefing, NoActiveModelError, SchemaValidationFailedError } =
+const { analyzeArticle, generateBriefing, answerQuestion, embedChunk, NoActiveModelError, SchemaValidationFailedError } =
   await import("@/server/ai/gateway");
 
 const promptVersion = {
@@ -150,5 +152,113 @@ describe("generateBriefing", () => {
   it("활성 모델이 없으면 즉시 실패한다", async () => {
     mockListActiveModelsForTask.mockResolvedValue([]);
     await expect(generateBriefing(candidates)).rejects.toThrow(NoActiveModelError);
+  });
+});
+
+describe("answerQuestion (F-07)", () => {
+  const documents = [
+    {
+      index: 1,
+      articleId: "article-1",
+      title: "저축은행 대출 금리 인상",
+      publisher: "테스트 언론사",
+      publishedAt: new Date("2026-08-20T00:00:00Z"),
+      chunkText: "저축은행 5곳이 가계대출 금리를 0.3%p 인상했다.",
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockLoadActivePromptVersion.mockResolvedValue({
+      id: "pv-qa",
+      systemPrompt: "질의응답",
+      userTemplate: "<documents>{documents}</documents><question>{user_question}</question>",
+    });
+    mockListActiveModelsForTask.mockResolvedValue([model]);
+  });
+
+  it("근거 문서 번호([n])가 포함된 답변은 그대로 통과한다", async () => {
+    mockCallAnthropic.mockResolvedValue({
+      text: JSON.stringify({ answer: "가계대출 금리가 0.3%p 인상됐습니다[1]." }),
+      tokenInput: 100,
+      tokenOutput: 50,
+    });
+
+    const result = await answerQuestion("저축은행 대출 금리 어떻게 됐어?", documents);
+
+    expect(result.output.answer).toContain("[1]");
+    expect(mockCallAnthropic).toHaveBeenCalledTimes(1);
+    expect(mockCallAnthropic).toHaveBeenCalledWith(
+      expect.objectContaining({ userPrompt: expect.stringContaining("저축은행 대출 금리 인상") })
+    );
+  });
+
+  it("근거 없음 고정 문구는 인용 번호 없이도 통과한다 (§F-07 수용 기준)", async () => {
+    mockCallAnthropic.mockResolvedValue({
+      text: JSON.stringify({ answer: "수집된 뉴스에서 관련 내용을 찾지 못했습니다. 질문을 바꾸거나 검색 기간을 넓혀보세요." }),
+      tokenInput: 50,
+      tokenOutput: 20,
+    });
+
+    const result = await answerQuestion("무관한 질문", documents);
+    expect(result.output.answer).toContain("찾지 못했습니다");
+  });
+
+  it("인용 번호도 없고 고정 문구도 아니면 1회 재시도 후에도 실패하면 던진다 (§F-07: 각주 없는 답변은 렌더링하지 않는다)", async () => {
+    mockCallAnthropic.mockResolvedValue({
+      text: JSON.stringify({ answer: "금리가 인상됐습니다." }), // 인용 번호 없음
+      tokenInput: 50,
+      tokenOutput: 20,
+    });
+
+    await expect(answerQuestion("저축은행 대출 금리 어떻게 됐어?", documents)).rejects.toThrow(
+      SchemaValidationFailedError
+    );
+    expect(mockCallAnthropic).toHaveBeenCalledTimes(2);
+  });
+
+  it("첫 시도에 인용이 빠졌어도 재시도에서 인용을 포함하면 통과한다", async () => {
+    mockCallAnthropic
+      .mockResolvedValueOnce({ text: JSON.stringify({ answer: "금리가 인상됐습니다." }), tokenInput: 10, tokenOutput: 5 })
+      .mockResolvedValueOnce({
+        text: JSON.stringify({ answer: "금리가 인상됐습니다[1]." }),
+        tokenInput: 10,
+        tokenOutput: 5,
+      });
+
+    const result = await answerQuestion("저축은행 대출 금리 어떻게 됐어?", documents);
+    expect(result.output.answer).toContain("[1]");
+    expect(mockCallAnthropic).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("embedChunk (F-07)", () => {
+  const embedModel = { id: "model-embed", modelKey: "text-embedding-3-small", costPer1kInput: 0.00002, costPer1kOutput: 0 };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockListActiveModelsForTask.mockResolvedValue([embedModel]);
+  });
+
+  it("활성 embed 모델이 없으면 즉시 실패하고 임베딩 API를 호출하지 않는다", async () => {
+    mockListActiveModelsForTask.mockResolvedValue([]);
+    await expect(embedChunk("텍스트")).rejects.toThrow(NoActiveModelError);
+    expect(mockEmbedText).not.toHaveBeenCalled();
+  });
+
+  it("성공하면 임베딩 벡터를 반환하고 성공 로그를 남긴다", async () => {
+    mockEmbedText.mockResolvedValue({ embedding: [0.1, 0.2, 0.3], tokenInput: 20 });
+
+    const result = await embedChunk("저축은행 관련 텍스트");
+
+    expect(result.embedding).toEqual([0.1, 0.2, 0.3]);
+    expect(mockRecordAiCallLog).toHaveBeenCalledWith(expect.objectContaining({ taskType: "embed", status: "success" }));
+  });
+
+  it("임베딩 API가 실패하면 에러 로그를 남기고 예외를 다시 던진다", async () => {
+    mockEmbedText.mockRejectedValue(new Error("OPENAI_API_KEY is not configured"));
+
+    await expect(embedChunk("텍스트")).rejects.toThrow("OPENAI_API_KEY is not configured");
+    expect(mockRecordAiCallLog).toHaveBeenCalledWith(expect.objectContaining({ taskType: "embed", status: "error" }));
   });
 });
