@@ -4,6 +4,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/http";
 import { setBookmark as apiSetBookmark } from "@/lib/api/news";
+import { useAuth } from "@/context/auth-context";
 
 interface UserActivityState {
   bookmarkedIds: string[];
@@ -36,10 +37,19 @@ const UserActivityContext = React.createContext<UserActivityContextValue | null>
  * tied to the real session — this used to be a pure localStorage mock with
  * no account concept at all, so anonymous visitors get empty state here
  * (browsing itself stays open; only these three lists require login).
+ *
+ * "로그인이 필요합니다" 오탐 버그: 예전엔 이 프로바이더가 마운트 시 딱 한 번만
+ * /api/v1/auth/me를 따로 호출해 자기만의 isLoggedIn을 갖고 있었다 — 로그인
+ * 화면에서 로그인해서 AuthProvider의 user는 즉시 갱신되고 헤더엔 로그인
+ * 상태로 보이는데, 페이지를 새로고침하지 않으면 이 프로바이더의 isLoggedIn은
+ * 로그인 전 값(false)에 멈춰 있어 좋아요/북마크를 누르면 로그인했는데도
+ * "로그인이 필요합니다"가 떴다. AuthProvider(useAuth)의 user를 유일한 진실
+ * 공급원으로 삼아 파생시키면 로그인/로그아웃 즉시 함께 갱신된다.
  */
 export function UserActivityProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
   const [state, setState] = React.useState<UserActivityState>(EMPTY_STATE);
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     try {
@@ -51,16 +61,12 @@ export function UserActivityProvider({ children }: { children: React.ReactNode }
   }, []);
 
   React.useEffect(() => {
-    // /api/v1/auth/me is the actual source of truth for "logged in" (my-activity
-    // returns 200 with empty arrays either way) — check it once so requireLogin()
-    // doesn't have to guess from empty-vs-populated activity lists.
-    apiFetch("/api/v1/auth/me")
-      .then(() => {
-        setIsLoggedIn(true);
-        refresh();
-      })
-      .catch(() => setIsLoggedIn(false));
-  }, [refresh]);
+    if (isLoggedIn) {
+      refresh();
+    } else {
+      setState(EMPTY_STATE);
+    }
+  }, [isLoggedIn, refresh]);
 
   const requireLogin = React.useCallback(() => {
     if (!isLoggedIn) {
