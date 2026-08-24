@@ -6,6 +6,7 @@ import { useCategories } from "@/context/categories-context";
 import { SearchBar } from "@/components/search/search-bar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,6 +76,7 @@ export function Navbar() {
               <Bookmark className="h-[18px] w-[18px]" />
             </Link>
           </Button>
+          <NotificationBell />
           <ThemeToggle />
           <Button asChild variant="ghost" size="sm" className="hidden gap-1 text-muted-foreground xl:inline-flex">
             <Link href="/admin/login">

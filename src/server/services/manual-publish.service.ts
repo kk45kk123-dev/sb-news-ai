@@ -9,6 +9,7 @@ import {
 } from "@/server/repositories/article.repository";
 import { toNewsDto } from "@/server/services/article.service";
 import { generateArticleEmbedding } from "@/server/services/embedding.service";
+import { notifyKeywordWatchers } from "@/server/services/keyword-watch.service";
 import type { News, GlossaryTerm } from "@/lib/schemas/news.schema";
 
 export class DuplicateArticleError extends Error {
@@ -210,6 +211,22 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
   // F-07: 트랜잭션 밖에서 실행한다 — OpenAI 호출을 DB 트랜잭션 안에 두면 커넥션을 불필요하게
   // 오래 붙잡는다. generateArticleEmbedding은 내부에서 예외를 삼키므로 게시 자체는 항상 성공한다.
   await generateArticleEmbedding(result.articleId);
+
+  if (result.status === "published") {
+    // F-08 축소판: draft는 아직 독자에게 보이지 않으므로 워치 알림 대상이 아니다.
+    try {
+      await notifyKeywordWatchers({
+        orgId: input.orgId,
+        articleId: result.articleId,
+        title: input.title,
+        summaryLines: input.summaryBullets,
+        keywords: input.keywords,
+        sbImpactScore: input.sbImpactScore ?? 3,
+      });
+    } catch (e) {
+      console.error(`[manual-publish] keyword watch notification failed for article ${result.articleId}`, e);
+    }
+  }
 
   return result;
 }

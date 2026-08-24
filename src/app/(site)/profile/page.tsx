@@ -3,15 +3,19 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bookmark, Heart, History, LogOut, Pencil, Check, X } from "lucide-react";
+import { Bookmark, Heart, History, LogOut, Pencil, Check, X, Bell, Plus } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useUserActivity } from "@/context/user-activity-context";
 import { ApiRequestError } from "@/lib/api/http";
 import { updateProfileSchema } from "@/lib/schemas/user.schema";
+import { createWatchSchema } from "@/lib/schemas/keyword-watch.schema";
+import { useMyWatchesQuery, useCreateWatchMutation, useDeleteWatchMutation } from "@/lib/query/use-keyword-watch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ProfilePage() {
   const { user, logout, updateProfileName } = useAuth();
@@ -21,6 +25,39 @@ export default function ProfilePage() {
   const [isEditingName, setIsEditingName] = React.useState(false);
   const [nameDraft, setNameDraft] = React.useState("");
   const [isSaving, setIsSaving] = React.useState(false);
+
+  const { data: watches } = useMyWatchesQuery(!!user);
+  const createWatch = useCreateWatchMutation();
+  const deleteWatch = useDeleteWatchMutation();
+  const [keywordDraft, setKeywordDraft] = React.useState("");
+  const [minImpactDraft, setMinImpactDraft] = React.useState<string>("any");
+
+  function addWatch(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = createWatchSchema.safeParse({
+      keyword: keywordDraft.trim(),
+      minImpact: minImpactDraft === "any" ? null : Number(minImpactDraft),
+    });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "키워드를 확인해주세요.");
+      return;
+    }
+    createWatch.mutate(parsed.data, {
+      onSuccess: () => {
+        toast.success(`"${parsed.data.keyword}" 키워드를 등록했습니다.`);
+        setKeywordDraft("");
+        setMinImpactDraft("any");
+      },
+      onError: (err) => toast.error(err instanceof ApiRequestError ? err.message : "등록에 실패했습니다."),
+    });
+  }
+
+  function removeWatch(id: string, keyword: string) {
+    deleteWatch.mutate(id, {
+      onSuccess: () => toast.success(`"${keyword}" 키워드를 삭제했습니다.`),
+      onError: (err) => toast.error(err instanceof ApiRequestError ? err.message : "삭제에 실패했습니다."),
+    });
+  }
 
   function startEditing() {
     setNameDraft(user!.name);
@@ -131,6 +168,68 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-1.5 text-sm">
+            <Bell className="h-4 w-4" /> 키워드 워치
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            등록한 키워드가 포함된 새 기사가 게시되면 알림으로 알려드립니다.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <form onSubmit={addWatch} className="flex gap-1.5">
+            <Input
+              value={keywordDraft}
+              onChange={(e) => setKeywordDraft(e.target.value)}
+              placeholder="예: PF 연체율"
+              disabled={createWatch.isPending}
+              className="h-9"
+            />
+            <Select value={minImpactDraft} onValueChange={setMinImpactDraft} disabled={createWatch.isPending}>
+              <SelectTrigger className="h-9 w-28 shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">전체 영향도</SelectItem>
+                <SelectItem value="3">3점 이상</SelectItem>
+                <SelectItem value="4">4점 이상</SelectItem>
+                <SelectItem value="5">5점만</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              type="submit"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              disabled={createWatch.isPending}
+              aria-label="키워드 추가"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </form>
+
+          {watches && watches.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {watches.map((w) => (
+                <Badge key={w.id} variant="muted" className="gap-1.5 py-1 pl-2.5 pr-1.5 text-xs">
+                  {w.keyword}
+                  {w.minImpact && <span className="text-muted-foreground">({w.minImpact}점+)</span>}
+                  <button
+                    type="button"
+                    onClick={() => removeWatch(w.id, w.keyword)}
+                    disabled={deleteWatch.isPending}
+                    aria-label={`${w.keyword} 워치 삭제`}
+                    className="rounded-full p-0.5 hover:bg-foreground/10"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Button variant="outline" className="w-full" onClick={logout}>
         <LogOut className="h-4 w-4" /> 로그아웃

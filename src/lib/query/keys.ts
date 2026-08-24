@@ -38,4 +38,10 @@ export const queryKeys = {
     sessions: () => ["chat", "sessions"] as const,
     session: (id: string) => ["chat", "sessions", id] as const,
   },
+  keywordWatches: {
+    mine: () => ["keyword-watches", "mine"] as const,
+  },
+  notifications: {
+    mine: () => ["notifications", "mine"] as const,
+  },
 };
