@@ -41,7 +41,7 @@ export async function removeWatch(id: string, userId: string): Promise<boolean> 
 /**
  * F-08 축소판(인앱 알림만). 기사 게시 직후 호출한다 — 이 조직의 활성 키워드 워치와 매칭되는
  * 사용자 전원에게 알림을 하나씩 만든다. 실패해도 게시 자체를 막으면 안 되므로 호출부에서
- * best-effort로 감싼다(embedding.service.ts와 같은 원칙).
+ * best-effort로 감싼다.
  */
 export async function notifyKeywordWatchers(input: {
   orgId: string;

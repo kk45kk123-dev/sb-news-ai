@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bookmark, History, MessageCircle, Menu, ShieldCheck, TrendingUp } from "lucide-react";
+import { Bookmark, History, Menu, ShieldCheck, TrendingUp } from "lucide-react";
 import { useCategories } from "@/context/categories-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -47,12 +47,6 @@ export function MobileNav() {
               <History className="h-4 w-4 text-muted-foreground" /> 최근 본 기사
             </Link>
           </SheetClose>
-          <SheetClose asChild>
-            <Link href="/qa" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted">
-              <MessageCircle className="h-4 w-4 text-muted-foreground" /> AI 질의응답
-            </Link>
-          </SheetClose>
-
           <p className="mt-3 px-3 text-xs font-semibold text-muted-foreground">카테고리</p>
           {categories.map((c) => (
             <SheetClose asChild key={c.id}>

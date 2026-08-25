@@ -8,7 +8,6 @@ import {
   type ManualArticlePatch,
 } from "@/server/repositories/article.repository";
 import { toNewsDto } from "@/server/services/article.service";
-import { generateArticleEmbedding } from "@/server/services/embedding.service";
 import { notifyKeywordWatchers } from "@/server/services/keyword-watch.service";
 import type { News, GlossaryTerm } from "@/lib/schemas/news.schema";
 
@@ -208,10 +207,6 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
     throw e;
   }
 
-  // F-07: 트랜잭션 밖에서 실행한다 — OpenAI 호출을 DB 트랜잭션 안에 두면 커넥션을 불필요하게
-  // 오래 붙잡는다. generateArticleEmbedding은 내부에서 예외를 삼키므로 게시 자체는 항상 성공한다.
-  await generateArticleEmbedding(result.articleId);
-
   if (result.status === "published") {
     // F-08 축소판: draft는 아직 독자에게 보이지 않으므로 워치 알림 대상이 아니다.
     try {
@@ -234,11 +229,6 @@ export async function publishManualArticle(input: PublishManualArticleInput): Pr
 /** Admin edit — same table the public site reads, so a save is visible immediately. */
 export async function editManualArticle(id: string, orgId: string, patch: ManualArticlePatch): Promise<News | null> {
   const updated = await updateManualArticle(id, orgId, patch);
-  if (updated && (patch.summaryBullets !== undefined || patch.keywords !== undefined || patch.title !== undefined)) {
-    // F-07: 임베딩된 내용(요약/키워드/제목)이 바뀌면 재임베딩한다 — 안 하면 질의응답이
-    // 수정 전 내용을 근거로 답하게 된다.
-    await generateArticleEmbedding(id);
-  }
   return updated ? toNewsDto(updated) : null;
 }
 

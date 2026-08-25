@@ -34,10 +34,6 @@ export const queryKeys = {
   market: {
     snapshot: () => ["market", "snapshot"] as const,
   },
-  chat: {
-    sessions: () => ["chat", "sessions"] as const,
-    session: (id: string) => ["chat", "sessions", id] as const,
-  },
   keywordWatches: {
     mine: () => ["keyword-watches", "mine"] as const,
   },

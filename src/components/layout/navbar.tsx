@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, ChevronDown, MessageCircle, Newspaper, ShieldCheck, TrendingUp } from "lucide-react";
+import { Bookmark, ChevronDown, Newspaper, ShieldCheck, TrendingUp } from "lucide-react";
 import { useCategories } from "@/context/categories-context";
 import { SearchBar } from "@/components/search/search-bar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -51,12 +51,6 @@ export function Navbar() {
           <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
             <Link href="/news?sort=views">
               <TrendingUp className="h-4 w-4" /> 인기뉴스
-            </Link>
-          </Button>
-
-          <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-            <Link href="/qa">
-              <MessageCircle className="h-4 w-4" /> AI 질의응답
             </Link>
           </Button>
         </nav>

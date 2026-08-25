@@ -5,12 +5,10 @@ import { listActiveModelsForTask } from "@/server/repositories/ai-model.reposito
 import { listActiveCategoryNames } from "@/server/repositories/category.repository";
 import { recordAiCallLog } from "@/server/repositories/ai-call-log.repository";
 import { callAnthropic } from "./providers/anthropic.provider";
-import { embedText } from "./providers/openai.provider";
 import { extractJson } from "./json-extract";
 import { scanForPromptInjection } from "./guardrails";
 import { analyzeOutputSchema, analyzeOutputJsonSchema, type AnalyzeOutput } from "./schemas/analyze.schema";
 import { briefingOutputSchema, type BriefingOutput } from "./schemas/briefing.schema";
-import { qaOutputSchema, type QaOutput } from "./schemas/qa.schema";
 
 export class AiGatewayError extends Error {}
 export class NoActiveModelError extends AiGatewayError {}
@@ -188,77 +186,6 @@ export async function generateBriefing(
     promptVersion,
     schema: briefingOutputSchema,
     systemPrompt,
-    userPrompt,
-  });
-}
-
-/**
- * F-07 임베딩 생성. callStructuredTask와 별도 경로다 — JSON 프롬프트/스키마 검증이 아니라
- * 벡터 하나를 그대로 받는 호출이라 공유 헬퍼가 맞지 않는다. ai_call_logs 기록은 동일하게 한다.
- */
-export async function embedChunk(text: string): Promise<{ embedding: number[]; model: AiModel }> {
-  const models = await listActiveModelsForTask("embed");
-  if (models.length === 0) {
-    throw new NoActiveModelError("No active ai_model configured for task_type=embed");
-  }
-  const model = models[0]!;
-  const startedAt = Date.now();
-
-  try {
-    const result = await embedText(text, model.modelKey);
-    await recordAiCallLog({
-      taskType: "embed",
-      modelId: model.id,
-      tokenInput: result.tokenInput,
-      cost: (result.tokenInput / 1000) * Number(model.costPer1kInput),
-      latencyMs: Date.now() - startedAt,
-      status: "success",
-    });
-    return { embedding: result.embedding, model };
-  } catch (e) {
-    await recordAiCallLog({
-      taskType: "embed",
-      modelId: model.id,
-      latencyMs: Date.now() - startedAt,
-      status: "error",
-      error: e instanceof Error ? e.message : String(e),
-    });
-    throw e;
-  }
-}
-
-export interface QaDocument {
-  index: number;
-  articleId: string;
-  title: string;
-  publisher: string | null;
-  publishedAt: Date;
-  chunkText: string;
-}
-
-/** F-07 AI 질의응답. 검색(§F-07 하이브리드 검색)은 호출부(qa.service.ts) 책임 — 여기는
- *  이미 뽑힌 후보 문서를 받아 인용이 강제된 답변을 생성하는 부분만 담당한다. */
-export async function answerQuestion(
-  question: string,
-  documents: QaDocument[]
-): Promise<StructuredTaskResult<QaOutput>> {
-  const promptVersion = await loadActivePromptVersion("qa");
-  const documentsText = documents
-    .map(
-      (d) =>
-        `[${d.index}] ${d.title} (${d.publisher ?? "출처 미상"}, ${d.publishedAt.toISOString().slice(0, 10)})\n${d.chunkText}`
-    )
-    .join("\n\n");
-  const userPrompt = renderTemplate(promptVersion.userTemplate, {
-    documents: documentsText,
-    user_question: question,
-  });
-
-  return callStructuredTask({
-    taskType: "qa",
-    promptVersion,
-    schema: qaOutputSchema,
-    systemPrompt: promptVersion.systemPrompt,
     userPrompt,
   });
 }
