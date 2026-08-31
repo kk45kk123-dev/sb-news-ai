@@ -4,7 +4,7 @@ import { CATEGORIES } from "@/data/categories";
 import { ingestAnalyzeRequestSchema, ingestAnalyzeOutputSchema } from "@/lib/schemas/ingest.schema";
 import { extractArticleFromUrl, ArticleExtractionError } from "@/server/ingest/extract-article";
 import { findExistingArticleIdByUrl } from "@/server/services/manual-publish.service";
-import { callAnthropic } from "@/server/ai/providers/anthropic.provider";
+import { callAnthropic, AiDisabledError } from "@/server/ai/providers/anthropic.provider";
 import { extractJson } from "@/server/ai/json-extract";
 import { isAiBudgetExceeded } from "@/server/ai/budget";
 import { recordAiCallLog } from "@/server/repositories/ai-call-log.repository";
@@ -201,7 +201,9 @@ export async function POST(req: NextRequest) {
         latencyMs,
       });
     } catch (e) {
-      if (e instanceof Anthropic.AuthenticationError) {
+      if (e instanceof AiDisabledError) {
+        lastError = "AI 기능이 현재 비활성화되어 있습니다(AI_ENABLED=false). 활성화하려면 환경 변수를 확인해주세요.";
+      } else if (e instanceof Anthropic.AuthenticationError) {
         lastError = "ANTHROPIC_API_KEY가 유효하지 않습니다. 환경 변수를 확인해주세요.";
       } else if (e instanceof Anthropic.RateLimitError) {
         lastError = "Anthropic API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요.";

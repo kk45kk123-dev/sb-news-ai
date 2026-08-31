@@ -15,6 +15,10 @@ const optionalPositiveInt = z.preprocess(
   (v) => (v === "" || v === undefined ? undefined : Number(v)),
   z.number().int().positive().optional()
 );
+const optionalBoolean = z.preprocess(
+  (v) => (v === "" || v === undefined ? undefined : v === "true" || v === "1"),
+  z.boolean().optional()
+);
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -30,6 +34,10 @@ const envSchema = z.object({
   CRON_SECRET: optionalString,
   /** AI 예산 가드(src/server/ai/budget.ts) — 최근 24시간 ai_call_logs 건수 상한. 미설정 시 기본값 300. */
   AI_DAILY_CALL_LIMIT: optionalPositiveInt,
+  /** AI 기능 긴급 차단 스위치. false로 설정하면 ANTHROPIC_API_KEY가 살아있어도 어떤 AI
+   *  호출도 나가지 않는다(anthropic.provider.ts에서 검사) — Anthropic 콘솔에서 키를
+   *  재발급하지 않고도 즉시 비용 발생을 막을 수 있는 레버. 미설정 시 기존처럼 활성(true). */
+  AI_ENABLED: optionalBoolean,
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -42,11 +50,10 @@ function loadEnv(): Env {
       .join("\n");
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
-  if (!parsed.data.ANTHROPIC_API_KEY && !parsed.data.OPENAI_API_KEY) {
-    throw new Error(
-      "At least one of ANTHROPIC_API_KEY or OPENAI_API_KEY must be set (AI Gateway needs a provider)."
-    );
-  }
+  // 예전엔 ANTHROPIC_API_KEY/OPENAI_API_KEY 둘 다 없으면 앱 자체가 부팅에 실패했다 —
+  // 그러면 "AI 비용이 걱정되니 키를 지운다"는 정상적인 대응이 사이트 전체를 죽이는
+  // 셈이 된다. 이제 키가 없거나 AI_ENABLED=false면 AI 관련 호출만 그 자리에서
+  // 실패하고(anthropic.provider.ts), 나머지 서비스는 그대로 동작한다.
   return parsed.data;
 }
 
