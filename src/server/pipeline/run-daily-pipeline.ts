@@ -6,6 +6,7 @@ import { redis } from "@/server/redis/client";
 import { findAdminUserIds } from "@/server/repositories/user.repository";
 import { createNotificationForUsers } from "@/server/repositories/notification.repository";
 import { getOrgSettings } from "@/server/services/settings.service";
+import { maybeNotifyEconomicCalendarStale } from "@/server/services/economic-event.service";
 import { runCollectJob } from "./collect.job";
 import { runNormalizeJob } from "./normalize.job";
 import { runPurgeJob } from "./purge.job";
@@ -175,6 +176,14 @@ export async function runDailyPipeline(): Promise<DailyPipelineResult> {
       result.briefingGenerated = await runBriefingJob();
     } catch (e) {
       console.error("[daily-pipeline] briefing generation failed", e);
+    }
+
+    // 5) 경제 일정이 2주 이상 안 갱신됐으면 관리자에게 알림 — AI 비용 없이 쿼리 몇 번뿐이라
+    //    시간 예산과 무관하게 항상 실행한다.
+    try {
+      await maybeNotifyEconomicCalendarStale(DEFAULT_ORG_ID);
+    } catch (e) {
+      console.error("[daily-pipeline] economic calendar staleness check failed", e);
     }
   } finally {
     // 락 소유자일 때만 해제한다 — TTL 만료로 이미 풀렸거나(강제 종료 등) 다른 실행이

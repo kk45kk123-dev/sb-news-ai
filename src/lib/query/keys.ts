@@ -40,4 +40,8 @@ export const queryKeys = {
   notifications: {
     mine: () => ["notifications", "mine"] as const,
   },
+  economicEvents: {
+    upcoming: () => ["economic-events", "upcoming"] as const,
+    adminAll: () => ["economic-events", "admin-all"] as const,
+  },
 };

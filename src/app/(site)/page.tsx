@@ -2,6 +2,7 @@ import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query
 import { DEFAULT_ORG_ID } from "@/config/constants";
 import { listPublicNews, publicNewsListQuerySchema } from "@/server/services/article.service";
 import { getMarketSnapshot } from "@/server/services/market.service";
+import { getUpcomingEvents } from "@/server/services/economic-event.service";
 import { queryKeys } from "@/lib/query/keys";
 import { HomeContent } from "./home-content";
 
@@ -37,6 +38,10 @@ export default async function HomePage() {
     queryClient.prefetchQuery({
       queryKey: queryKeys.market.snapshot(),
       queryFn: () => getMarketSnapshot(),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.economicEvents.upcoming(),
+      queryFn: () => getUpcomingEvents(DEFAULT_ORG_ID),
     }),
   ]);
 

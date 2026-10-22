@@ -125,6 +125,14 @@ enum NotifyChannel {
   @@map("notify_channel")
 }
 
+enum EventImportance {
+  high
+  medium
+  low
+
+  @@map("event_importance")
+}
+
 enum FeedbackType {
   inaccurate
   irrelevant
@@ -162,6 +170,7 @@ model Organization {
   categories Category[]
   briefings  Briefing[]
   chatSessions ChatSession[]
+  economicEvents EconomicEvent[]
   auditLogs  AuditLog[]
 
   @@map("organizations")
@@ -513,6 +522,25 @@ model Notification {
 
   @@index([userId, createdAt(sort: Desc)], map: "idx_notifications_user_unread")
   @@map("notifications")
+}
+
+/** 홈 화면 "경제 일정" 카드(이전엔 src/data/market.ts의 고정 배열이었다)가 읽는 실제 데이터.
+ *  날짜가 지난 이벤트가 화면에 그대로 남아있던 문제를 해결하려고 DB로 옮겼다 — 목록 조회
+ *  시 오늘 이후 항목만 가져오면 되고, 관리자가 주기적으로 다음 이벤트를 채워 넣는다. */
+model EconomicEvent {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId      String           @map("org_id") @db.Uuid
+  title      String           @db.VarChar(200)
+  eventDate  DateTime         @map("event_date") @db.Date
+  eventTime  String?          @map("event_time") @db.VarChar(20)
+  importance EventImportance  @default(medium)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, eventDate], map: "idx_economic_events_org_date")
+  @@map("economic_events")
 }
 
 model CrawlLog {
